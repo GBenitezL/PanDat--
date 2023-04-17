@@ -93,7 +93,8 @@ class ParserClass(Parser):
        'loop statements_2',
        'return_stmt statements_2',
        'function_call_void statements_2',
-       'plot statements_2')
+       'plot statements_2',
+       'regression statements_2')
     def statements(self, p):
         pass
 
@@ -254,7 +255,11 @@ class ParserClass(Parser):
         pass
     
     @_('PLOT LPAREN ID COMMA ID COMMA CTESTRING RPAREN SEMI',
-       'PLOT LPAREN ID COMMA CTESTRING')
+       'PLOT LPAREN ID COMMA CTESTRING RPAREN SEMI')
+    def plot(self, p):
+        pass
+
+    @_('REGRESSION LPAREN ID COMMA ID RPAREN SEMI')
     def plot(self, p):
         pass
 

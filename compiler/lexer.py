@@ -27,7 +27,8 @@ class LexerClass(Lexer):
         'std': 'STD',
         'rand': 'RAND',
         'plot': 'PLOT',
-        'corr': 'CORR'
+        'corr': 'CORR',
+        'regression': 'REGRESSION'
     }
 
     tokens = ['ID', 'CTEF', 'CTEI', 'CTEC', 'CTESTRING', 'COMMA', 'COLON', 'SEMI',
