@@ -1,4 +1,4 @@
-from utils import print_error, data_type_IDs
+from compiler.utils import print_error, data_type_IDs
 
 class Directory:
     def __init__(self):
