@@ -208,26 +208,26 @@ class ParserClass(Parser):
     def write(self, p):
         pass
 
-    @_('expression COMMA',
-       'expression',
-       'CTESTRING COMMA',
-       'CTESTRING')
+    @_('expression np_quad_print_exp COMMA write_2_multiple',
+       'expression np_quad_print_exp',
+       'CTESTRING np_quad_print_str COMMA write_2_multiple',
+       'CTESTRING np_quad_print_str')
     def write_2(self, p):
         pass
 
-    # @_('expression COMMA',
-    #    'expression',
-    #    'CTESTRING COMMA',
-    #    'CTESTRING')
-    # def write_2_multiple(self, p):
-    #     pass
+    @_('expression np_quad_print_multiple_exp COMMA write_2_multiple',
+       'expression np_quad_print_multiple_exp',
+       'CTESTRING np_quad_print_multiple_str COMMA write_2_multiple',
+       'CTESTRING np_quad_print_multiple_str')
+    def write_2_multiple(self, p):
+        pass
 
-    @_('READ LPAREN read_2 RPAREN SEMI')
+    @_('READ LPAREN read_2 RPAREN np_quad_read SEMI')
     def read(self, p):
         pass
 
-    @_('ID',
-       'ID LBRACKET expression RBRACKET')
+    @_('ID np_add_id',
+       'ID np_add_id LBRACKET expression RBRACKET')
     def read_2(self, p):
         pass
     
@@ -272,6 +272,9 @@ class ParserClass(Parser):
     def epsilon(self, p):
         return None
     
+
+    # Neuralgic Points
+
     @_(' ')
     def np_global_scope(self, p):
         global scopes, current_scope, jumps_stack
@@ -395,6 +398,32 @@ class ParserClass(Parser):
         if res_type == 'Error':
             print_error(f'Error: Type mismatch on {right_type}, and {left_type} with a {operator}', '')
         set_quad(operator, right_oper, -1, left_oper)
+
+    @_(' ')
+    def np_quad_read(self, p):
+        global operands_stack, types_stack
+        var = operands_stack.pop()
+        set_quad('READ', -1, data_type_IDs[types_stack.pop()], var)
+
+    @_(' ')
+    def np_quad_print_str(self, p):
+        set_quad('PRINT', -1, -1, p[-1])
+
+    @_(' ')
+    def np_quad_print_exp(self, p):
+        global operands_stack, types_stack
+        types_stack.pop()
+        set_quad('PRINT', -1, -1, operands_stack.pop())
+
+    @_(' ')
+    def np_quad_print_multiple_str(self, p):
+        set_quad('PRINT_MULTIPLE', -1, -1, p[-1])
+
+    @_(' ')
+    def np_quad_print_multiple_exp(self, p):
+        global operands_stack, types_stack
+        types_stack.pop()
+        set_quad('PRINT_MULTIPLE', -1, -1, operands_stack.pop())
 
     @_(' ')
     def np_end_main(self, p):
