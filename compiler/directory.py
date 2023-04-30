@@ -15,16 +15,16 @@ class Directory:
             print(f'{key}: {value}')
 
 
-class Vars(Directory):
+class Variables(Directory):
     def __init__(self, scope):
         super().__init__()
         self.scope = scope
     
     def add_var(self, id, type):
         if id in self.directory:
-            print_error(f'Variable {id} has already been declared in this scope', 'EC-04')
+            print_error(f"Variable '{id}' has already been declared in this scope", 'EC-04')
         if type == 'void' or type not in ['int', 'float', 'char', 'bool']:
-            print_error(f'{id} requires a return type {type}', 'EC-03')
+            print_error(f"Variable '{id}' requires a return type {type}", 'EC-03')
         self.directory[id] = {'type': type, 'address': None}
     
     def set_var_address(self, id, address):
@@ -35,7 +35,7 @@ class Vars(Directory):
         self.directory[id]['arr_size'] = arr_size
 
 
-class Scopes_Directory(Directory):
+class ScopesDirectory(Directory):
     def add_new_scope(self, id, return_type, vars_table):
         if self.exists(id):
             print_error(f'Scope {id} already exists in this scope', 'EC-02')
@@ -86,7 +86,7 @@ class Scopes_Directory(Directory):
             print(f'Scope {scope}:')
             for key, value in scope_value.items():
                 if key == 'vars_table':
-                    print(f'Vars table for {scope}')
+                    print(f'Variables table for {scope}')
                     value.print_directory()
                 else:
                     print(f'{key}: {value}')
