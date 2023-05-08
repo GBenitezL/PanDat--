@@ -275,13 +275,14 @@ class ParserClass(Parser):
 
     # Neuralgic Points
 
+    # Scopes
+
     @_(' ')
     def np_global_scope(self, p):
         global scopes, current_scope, jumps_stack
         create_scope('program', 'void')
         set_quad('GOTO', -1, -1, -1)
         jumps_stack.append(len(quadruples) - 1)
-
 
     @_(' ')
     def np_main_scope(self, p):
@@ -290,7 +291,6 @@ class ParserClass(Parser):
         main_quadruple_position = jumps_stack.pop()
         old_main_goto_quadruple = quadruples[main_quadruple_position]
         old_main_goto_quadruple.set_result(len(quadruples))
-
 
     @_(' ')
     def np_new_scope(self, p):
@@ -302,6 +302,19 @@ class ParserClass(Parser):
             global_scope_vars = scopes.get_vars_table('program')
             global_scope_vars.add_var(function_id, return_type)
             global_scope_vars.set_arrray_values(function_id, bool_arr, arr_size)
+    
+    @_(' ')
+    def np_end_main(self, p):
+        global scopes, current_scope
+        scopes.set_size(current_scope)
+        scopes.set_size('program')
+
+    @_(' ')
+    def np_end_program(self, p):
+        set_quad('END', -1, -1, -1)
+
+    
+    # Variables
 
     @_(' ')
     def np_append_vars(self, p):
@@ -370,6 +383,8 @@ class ParserClass(Parser):
             print_error('Error: \'(\' not found in operators_stack stack ', '')
         operators_stack.pop()
 
+    # Arithmetics
+
     @_(' ')
     def np_quad_plus_minus(self, p):
         create_quad(['+', '-'])
@@ -399,6 +414,9 @@ class ParserClass(Parser):
             print_error(f'Error: Type mismatch on {right_type}, and {left_type} with a {operator}', '')
         set_quad(operator, right_oper, -1, left_oper)
 
+
+    # Read / Write
+
     @_(' ')
     def np_quad_read(self, p):
         global operands_stack, types_stack
@@ -424,6 +442,9 @@ class ParserClass(Parser):
         global operands_stack, types_stack
         types_stack.pop()
         set_quad('PRINT_MULTIPLE', -1, -1, operands_stack.pop())
+
+
+    # Non-Linear Statements
 
     @_(' ')
     def np_if_gotof(self, p):
@@ -514,22 +535,17 @@ class ParserClass(Parser):
         set_quad('GOTO', -1, -1, jumps_stack.pop())
         quadruples[end_pos].set_result(len(quadruples))
 
-    @_(' ')
-    def np_end_main(self, p):
-        global scopes, current_scope
-        scopes.set_size(current_scope)
-        scopes.set_size('program')
 
-    @_(' ')
-    def np_end_program(self, p):
-        set_quad('END', -1, -1, -1)
-
+    # Error
     def error(self, token):
         if token:
             print(f"Syntax error at token {token.var_type} ({token.value}) on line {token.lineno}")
         else:
             print("Syntax error at end of input")
 
+
+
+# Global Variables
 
 scopes = ScopesDirectory()
 current_scope = ''
@@ -545,6 +561,17 @@ temps_count = 0
 
 
 # Functions
+
+def get_var(var_id):
+    global scopes, current_scope
+    scope_vars = scopes.get_vars_table(current_scope)
+    directory_var = scope_vars.get_one(var_id)
+    if (directory_var == 'not_in_directory'):
+        program_vars = scopes.get_vars_table('program')
+        directory_var = program_vars.get_one(var_id)
+        print_error(f'Error: Variable {var_id} not found in current or global scope', '')
+
+    return directory_var
 
 def create_scope(scope_id, return_type):
     global scopes, current_scope
@@ -575,15 +602,3 @@ def set_quad(first, second, third, fourth):
     operator_id = operator_IDs[first]
     new_quadruple = Quadruple(operator_id, second, third, fourth)
     quadruples.append(new_quadruple)
-    
-def get_var(var_id):
-    global scopes, current_scope
-    scope_vars = scopes.get_vars_table(current_scope)
-    directory_var = scope_vars.get_one(var_id)
-    if (directory_var == 'not_in_directory'):
-        program_vars = scopes.get_vars_table('program')
-        directory_var = program_vars.get_one(var_id)
-        print_error(f'Error: Variable {var_id} not found in current or global scope', '')
-
-    return directory_var
-
