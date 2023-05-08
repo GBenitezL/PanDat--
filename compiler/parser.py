@@ -123,8 +123,8 @@ class ParserClass(Parser):
     def assignment(self, p):
         pass
 
-    @_('IF LPAREN expression RPAREN block',
-       'IF LPAREN expression RPAREN block ELSE block')
+    @_('IF LPAREN expression RPAREN np_if_gotof block np_if_end_gotof',
+       'IF LPAREN expression RPAREN np_if_gotof block ELSE np_else_goto block np_if_end_gotof')
     def condition(self, p):
         pass
 
@@ -134,12 +134,12 @@ class ParserClass(Parser):
     def expression(self, p):
         return p[0]
 
-    @_('exp LT exp',
-       'exp LE exp',
-       'exp GT exp',
-       'exp GE exp',
-       'exp EQ exp',
-       'exp NE exp')
+    @_('exp LT np_add_operator exp',
+       'exp LE np_add_operator exp',
+       'exp GT np_add_operator exp',
+       'exp GE np_add_operator exp',
+       'exp EQ np_add_operator exp',
+       'exp NE np_add_operator exp')
     def comparison(self, p):
         return(p[1], p[2], p[3])
 
@@ -196,11 +196,11 @@ class ParserClass(Parser):
     def loop(self, p):
         pass
 
-    @_('WHILE LPAREN expression RPAREN block')
+    @_('WHILE np_while_start LPAREN expression RPAREN np_while_expression block np_while_end')
     def while_loop(self, p):
         pass
 
-    @_('FOR LPAREN ID EQUALS expression SEMI expression SEMI expression RPAREN block')
+    @_('FOR LPAREN ID np_add_id EQUALS np_add_operator expression np_for_expression SEMI expression np_for_limit SEMI expression RPAREN block np_for_end')
     def for_loop(self, p):
         pass
 
@@ -424,6 +424,95 @@ class ParserClass(Parser):
         global operands_stack, types_stack
         types_stack.pop()
         set_quad('PRINT_MULTIPLE', -1, -1, operands_stack.pop())
+
+    @_(' ')
+    def np_if_gotof(self, p):
+        global operands_stack, types_stack, quadruples, jumps_stack
+        res_if_type = types_stack.pop()
+        if res_if_type == 'bool':
+            set_quad('GOTOF', operands_stack.pop(), -1, -1)
+            jumps_stack.append(len(quadruples) - 1)
+        else:
+            print_error(f'Conditional statement must be of type bool', '')
+    
+    @_(' ')
+    def np_if_end_gotof(self, p):
+        global jumps_stack, quadruples
+        old_quad = quadruples[jumps_stack.pop()]
+        old_quad.set_result(len(quadruples))
+
+    @_(' ')
+    def np_else_goto(self, p):
+        set_quad('GOTO', -1, -1, -1)
+        old_quad = quadruples[jumps_stack.pop()]
+        jumps_stack.append(len(quadruples) - 1)
+        old_quad.set_result(len(quadruples))
+
+    @_(' ')
+    def np_for_expression(self, p):
+        global operators_stack, operands_stack, types_stack, quadruples, jumps_stack
+        operator = operators_stack.pop()
+        right_oper = operands_stack.pop()
+        right_type = types_stack.pop()
+        left_oper = operands_stack.pop()
+        left_type = types_stack.pop()
+        if right_type == 'int' and left_type == 'int' :
+            set_quad(operator, right_oper, -1, left_oper)
+            jumps_stack.append(len(quadruples))
+            operands_stack.append(left_oper)
+            types_stack.append('int')
+        else:
+            print_error(f'For loop requires limits of type int', '')
+    
+    @_(' ')
+    def np_for_limit(self, p):
+        global operands_stack, types_stack, quadruples, jumps_stack
+        result = operands_stack.pop()
+        operand_type = types_stack.pop()
+
+        if operand_type == 'bool':
+            set_quad('GOTOV', result, -1, -1)
+            jumps_stack.append(len(quadruples) - 1)
+        else:
+            print_error(f'For loop requires condition of type bool', '')
+
+    @_(' ')
+    def np_for_end(self, p):
+        global operands_stack, types_stack, quadruples
+        for_length = operands_stack.pop()
+        if types_stack.pop() == 'int':
+            for_value = operands_stack.pop()
+            for_var_type = types_stack.pop()
+        else:
+            print_error('Value for For loop update variable should be int', '')
+        
+        if get_type('+', for_var_type, 'int') == 'int':
+            set_quad('+', for_value, for_length, for_value)
+            end_pos = jumps_stack.pop()
+            set_quad('GOTO', -1, -1, jumps_stack.pop())
+            quadruples[end_pos].set_result(len(quadruples))
+        else:
+            print_error(f'Cannot perform operation + to {for_var_type} and int', '')
+
+
+    @_(' ')
+    def np_while_start (self, p):
+        jumps_stack.append(len(quadruples))
+
+    @_(' ')
+    def np_while_expression (self, p):
+        exp_type = types_stack.pop()
+        if exp_type == 'bool': 
+            set_quad('GOTOF', operands_stack.pop(), -1, -1)
+            jumps_stack.append(len(quadruples) - 1)
+        else:
+            print_error(f'Conditional statement must be of type bool', '')
+
+    @_(' ')
+    def np_while_end (self, p):
+        end_pos = jumps_stack.pop()
+        set_quad('GOTO', -1, -1, jumps_stack.pop())
+        quadruples[end_pos].set_result(len(quadruples))
 
     @_(' ')
     def np_end_main(self, p):
