@@ -10,3 +10,6 @@ También definí las consideraciones semánticas del lenguaje. Utilicé un dicci
 
 ## Avance #3
 Creé los primeros puntos neurálgicos que facilitan las acciones semánticas a través de la sintaxis. Para esto, hice uso de la librería deque para crear las pilas de variables, operandos, operadores, y saltos, las cuales son variables globales. También creé la clase cuádruplos, la cual almacena el operando, los operadores y resultados. Con esto, se generan los cuádruplos de los estatutos y expresiones aritméticas.
+
+## Avance #4
+Agruegúe los puntos neurálgicos para IF, IF-ELSE, WHILE y FOR, en los cuales se modifican los stacks declarados en el avance anterior.
