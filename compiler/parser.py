@@ -571,7 +571,7 @@ class ParserClass(Parser):
             set_quad('ERA', -1, -1, current_function_call_ID)
             operators_stack.append('~')
         else:
-            print_error(f'Function {current_function_call_ID} is not defined', 'EC-13')
+            print_error(f'Function {current_function_call_ID} is not defined', '')
 
     @_(' ')
     def np_add_function_call_parameters(self, p):
@@ -586,7 +586,7 @@ class ParserClass(Parser):
             parameters_count += 1
             parameters_stack.append(parameters_count)
         else:
-            print_error(f'The {parameters_count + 1}th argument of function {current_function_call_ID} should be of type {function_call_parameters[parameters_count]}', 'EC-14')
+            print_error(f'The {parameters_count + 1}th argument of function {current_function_call_ID} should be of type {function_call_parameters[parameters_count]}', '')
         
     @_(' ')
     def np_func_end_parameters(self, p):
@@ -598,7 +598,7 @@ class ParserClass(Parser):
             initial_function_addres = scopes.get_quad_count(current_function_call_ID)
             set_quad('GOSUB', current_function_call_ID, -1, initial_function_addres)
         else:
-            print_error(f'Function {current_function_call_ID}, requires {size_of_parameters} arguments', 'EC-15')
+            print_error(f'Function {current_function_call_ID}, requires {size_of_parameters} arguments', '')
         
         fun_return_type = scopes.get_return_type(current_function_call_ID)
         if fun_return_type != 'void':
@@ -620,7 +620,7 @@ class ParserClass(Parser):
         if (func_return_type == types_stack.pop()):
             set_quad('RETURN', -1, -1, operands_stack.pop())
         else:
-            print_error(f'Function {current_scope} must return a value of type {func_return_type}', 'EC-16')
+            print_error(f'Function {current_scope} must return a value of type {func_return_type}', '')
 
 
     # Error
