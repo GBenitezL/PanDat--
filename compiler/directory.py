@@ -46,7 +46,7 @@ class ScopesDirectory(Directory):
         self.directory[id] = { 'vars_table': vars_table, 'return_type': return_type, 'parameters': parameters, 
             'params_IDs': params_IDs,  'count': None }
 
-    def get_vars_table(self, id):
+    def get_variables_table(self, id):
         return self.directory[id]['vars_table']
 
     def get_parameters(self, id):

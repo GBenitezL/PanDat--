@@ -9,8 +9,8 @@ from sly import Parser
 class ParserClass(Parser):
     tokens = LexerClass.tokens
 
-    @_('PROGRAM np_global_scope ID SEMI program_2 np_end_program',
-       'PROGRAM np_global_scope ID SEMI vars program_2 np_end_program')
+    @_('PROGRAM np_create_global_scope ID SEMI program_2 np_end_program',
+       'PROGRAM np_create_global_scope ID SEMI variables program_2 np_end_program')
     def program(self, p):
         return 'ok'
 
@@ -19,8 +19,8 @@ class ParserClass(Parser):
     def program_2(self, p):
         return None
 
-    @_('MAIN np_main_scope LPAREN RPAREN block np_end_main',
-       'MAIN np_main_scope LPAREN RPAREN vars block np_end_main')
+    @_('MAIN np_create_main_scope LPAREN RPAREN block np_end_main',
+       'MAIN np_create_main_scope LPAREN RPAREN variables block np_end_main')
     def main_block(self, p):
         pass
 
@@ -29,18 +29,18 @@ class ParserClass(Parser):
     def block(self, p):
         pass
 
-    @_('vars_2')
-    def vars(self, p):
+    @_('variables_2')
+    def variables(self, p):
         pass
 
-    @_('VAR vars_3 vars_2',
-       'VAR vars_3')
-    def vars_2(self, p):
+    @_('VAR variables_3 variables_2',
+       'VAR variables_3')
+    def variables_2(self, p):
         pass
 
-    @_('ID COLON var_type np_add_vars SEMI',
-       'ID COMMA np_append_vars vars_3')
-    def vars_3(self, p):
+    @_('ID COLON var_type np_add_variables SEMI',
+       'ID COMMA np_append_variables variables_3')
+    def variables_3(self, p):
         pass
 
     @_('INT array',
@@ -55,10 +55,10 @@ class ParserClass(Parser):
     def array(self, p):
         pass
 
-    @_('FUNCTION ID COLON return_type np_new_scope LPAREN params RPAREN block',
-       'FUNCTION ID COLON return_type np_new_scope LPAREN params RPAREN vars block',
-       'FUNCTION ID COLON return_type np_new_scope LPAREN RPAREN block',
-       'FUNCTION ID COLON return_type np_new_scope LPAREN RPAREN vars block')
+    @_('FUNCTION ID COLON return_type np_create_new_scope LPAREN RPAREN np_function_start block np_function_end',
+       'FUNCTION ID COLON return_type np_create_new_scope LPAREN RPAREN variables np_function_start block np_function_end',
+       'FUNCTION ID COLON return_type np_create_new_scope LPAREN parameters RPAREN np_function_start block np_function_end',
+       'FUNCTION ID COLON return_type np_create_new_scope LPAREN parameters RPAREN variables np_function_start block np_function_end')
     def function(self, p):
         return None
 
@@ -67,27 +67,27 @@ class ParserClass(Parser):
     def return_type(self, p):
         return p[1]
 
-    @_('ID COLON var_type np_add_vars COMMA params',
-       'ID COLON var_type np_add_vars')
-    def params(self, p):
+    @_('ID COLON var_type np_add_variables np_add_parameters_type COMMA parameters',
+       'ID COLON var_type np_add_variables np_add_parameters_type')
+    def parameters(self, p):
         pass
 
-    @_('ID LPAREN RPAREN',
-       'ID LPAREN function_params RPAREN')
+    @_('ID LPAREN np_check_function_call np_func_end_parameters RPAREN',
+       'ID LPAREN np_check_function_call function_parameters np_func_end_parameters RPAREN')
     def function_call_return(self, p):
         pass
 
-    @_('ID LPAREN RPAREN SEMI',
-       'ID LPAREN function_params RPAREN SEMI')
+    @_('ID LPAREN np_check_function_call np_func_end_parameters RPAREN SEMI',
+       'ID LPAREN np_check_function_call function_parameters np_func_end_parameters RPAREN SEMI')
     def function_call_void(self, p):
         pass
 
-    @_('expression',
-       'expression COMMA function_params')
-    def function_params(self, p):
+    @_('expression expression np_add_function_call_parameters',
+       'expression np_add_function_call_parameters COMMA function_parameters')
+    def function_parameters(self, p):
         pass
 
-    @_('RETURN expression SEMI')
+    @_('RETURN expression np_set_return_quad SEMI')
     def return_stmt(self, p):
         pass
 
@@ -118,8 +118,8 @@ class ParserClass(Parser):
     def statements_2(self, p):
         return p[0]
 
-    @_('ID np_add_id EQUALS np_add_operator expression np_set_expression SEMI',
-       'ID np_add_id LBRACKET expression RBRACKET EQUALS np_add_operator expression np_set_expression SEMI')
+    @_('ID np_add_id EQUALS np_add_operator expression np_quad_expression SEMI',
+       'ID np_add_id LBRACKET expression RBRACKET EQUALS np_add_operator expression np_quad_expression SEMI')
     def assignment(self, p):
         pass
 
@@ -168,7 +168,7 @@ class ParserClass(Parser):
     def term_2(self, p):
         pass
 
-    @_('LPAREN np_open_paren expression RPAREN np_close_paren',
+    @_('LPAREN np_open_parenthesis expression RPAREN np_close_parenthesis',
        'ID LBRACKET expression RBRACKET',
        'function_call_return',
        'factor_2',
@@ -278,14 +278,14 @@ class ParserClass(Parser):
     # Scopes
 
     @_(' ')
-    def np_global_scope(self, p):
+    def np_create_global_scope(self, p):
         global scopes, current_scope, jumps_stack
         create_scope('program', 'void')
         set_quad('GOTO', -1, -1, -1)
         jumps_stack.append(len(quadruples) - 1)
 
     @_(' ')
-    def np_main_scope(self, p):
+    def np_create_main_scope(self, p):
         global jumps_stack
         create_scope('main', 'void')
         main_quadruple_position = jumps_stack.pop()
@@ -293,15 +293,15 @@ class ParserClass(Parser):
         old_main_goto_quadruple.set_result(len(quadruples))
 
     @_(' ')
-    def np_new_scope(self, p):
+    def np_create_new_scope(self, p):
         global scopes, current_scope
         function_id = p[-3]
         return_type = p[-1]
         create_scope(function_id, return_type)
         if return_type != 'void':
-            global_scope_vars = scopes.get_vars_table('program')
-            global_scope_vars.add_var(function_id, return_type)
-            global_scope_vars.set_arrray_values(function_id, bool_arr, arr_size)
+            global_scope_variables = scopes.get_variables_table('program')
+            global_scope_variables.add_var(function_id, return_type)
+            global_scope_variables.set_arrray_values(function_id, bool_arr, arr_size)
     
     @_(' ')
     def np_end_main(self, p):
@@ -317,19 +317,19 @@ class ParserClass(Parser):
     # Variables
 
     @_(' ')
-    def np_append_vars(self, p):
+    def np_append_variables(self, p):
         global variables_stack
         variables_stack.append(p[-1])
 
     @_(' ')
-    def np_add_vars(self, p):
+    def np_add_variables(self, p):
         global scopes, current_scope, variables_stack
         var_id = p[-3]
         variables_stack.append(var_id)
-        vars_type = p[-1]
+        variables_type = p[-1]
         while variables_stack:
-            current_scope_vars = scopes.get_vars_table(current_scope)
-            current_scope_vars.add_var(variables_stack[0], vars_type)
+            current_scope_variables = scopes.get_variables_table(current_scope)
+            current_scope_variables.add_var(variables_stack[0], variables_type)
             variables_stack.popleft()
 
     @_(' ')
@@ -372,12 +372,12 @@ class ParserClass(Parser):
         operators_stack.append(p[-1])
 
     @_(' ')
-    def np_open_paren(self, p):
+    def np_open_parenthesis(self, p):
         global operators_stack
         operators_stack.append(p[-1])
 
     @_(' ')
-    def np_close_paren(self, p):
+    def np_close_parenthesis(self, p):
         global operators_stack
         if operators_stack[-1] != '(':
             print_error('Error: \'(\' not found in operators_stack stack ', '')
@@ -402,7 +402,7 @@ class ParserClass(Parser):
         create_quad(['||', '&&'])
 
     @_(' ')
-    def np_set_expression(self, p):
+    def np_quad_expression(self, p):
         global operators_stack, operands_stack, types_stack, quadruples
         operator = operators_stack.pop()
         right_oper = operands_stack.pop()
@@ -536,6 +536,93 @@ class ParserClass(Parser):
         quadruples[end_pos].set_result(len(quadruples))
 
 
+    # Modules
+    
+    @_(' ')
+    def np_function_start(self, p):
+        global scopes, current_scope, quadruples
+        scopes.set_quad_count(current_scope, len(quadruples))
+
+    @_(' ')
+    def np_add_parameters_type(self, p):
+        global scopes, current_scope
+        parameter_ID = p[-4]
+        parameter_type = p[-2]
+        current_scope_parameters = scopes.get_parameters(current_scope)
+        current_scope_IDs_parameters = scopes.get_parameter_IDs(current_scope)
+        current_scope_IDs_parameters.append(parameter_ID)
+        current_scope_parameters.append(parameter_type)
+
+    @_(' ')
+    def np_function_end(self, p):
+        global scopes, current_scope, mem_count
+        set_quad('ENDFUNC', -1, -1, -1)
+        scopes.set_size(current_scope)
+        mem_count.reset_local_counters()
+        mem_count.reset_temp_counters()
+
+    @_(' ')
+    def np_check_function_call(self, p):
+        global scopes, parameters_stack, current_function_call_ID, function_call_ID_stack, operators_stack
+        current_function_call_ID = p[-2]
+        if scopes.exists(current_function_call_ID):    
+            parameters_stack.append(0)
+            function_call_ID_stack.append(current_function_call_ID)
+            set_quad('ERA', -1, -1, current_function_call_ID)
+            operators_stack.append('~')
+        else:
+            print_error(f'Function {current_function_call_ID} is not defined', 'EC-13')
+
+    @_(' ')
+    def np_add_function_call_parameters(self, p):
+        global types_stack, parameters_stack, function_call_ID_stack, scopes
+        parameter_type = types_stack.pop()
+        parameters_count = parameters_stack.pop()
+        current_function_call_ID = function_call_ID_stack[-1]
+        function_call_parameters = scopes.get_parameters(current_function_call_ID)
+        
+        if(function_call_parameters[parameters_count] == parameter_type):
+            set_quad('PARAM', operands_stack.pop(), -1, f'_param_{parameters_count}')
+            parameters_count += 1
+            parameters_stack.append(parameters_count)
+        else:
+            print_error(f'The {parameters_count + 1}th argument of function {current_function_call_ID} should be of type {function_call_parameters[parameters_count]}', 'EC-14')
+        
+    @_(' ')
+    def np_func_end_parameters(self, p):
+        global parameters_stack, scopes, current_scope, temps_count, function_call_ID_stack, operators_stack
+        current_function_call_ID = function_call_ID_stack.pop()
+        size_of_parameters = len(scopes.get_parameters(current_function_call_ID))
+        operators_stack.pop()
+        if size_of_parameters == parameters_stack.pop():
+            initial_function_addres = scopes.get_quad_count(current_function_call_ID)
+            set_quad('GOSUB', current_function_call_ID, -1, initial_function_addres)
+        else:
+            print_error(f'Function {current_function_call_ID}, requires {size_of_parameters} arguments', 'EC-15')
+        
+        fun_return_type = scopes.get_return_type(current_function_call_ID)
+        if fun_return_type != 'void':
+            current_scope_variables = scopes.get_variables_table(current_scope)
+            temp_var_name = f"_temp{temps_count}"
+            temps_count += 1
+            current_scope_variables.add_var(temp_var_name, fun_return_type)
+            new_address = get_variables_new_address(fun_return_type, True)
+            current_scope_variables.set_var_address(temp_var_name, new_address)
+            directory_var = scopes.get_variables_table('program').get_one(current_function_call_ID)
+            set_quad('=', directory_var['address'], -1, new_address)
+            operands_stack.append(new_address)
+            types_stack.append(fun_return_type)
+
+    @_(' ')
+    def np_set_return_quad(self, p):
+        global current_scope, scopes, operands_stack, types_stack
+        func_return_type = scopes.get_return_type(current_scope)
+        if (func_return_type == types_stack.pop()):
+            set_quad('RETURN', -1, -1, operands_stack.pop())
+        else:
+            print_error(f'Function {current_scope} must return a value of type {func_return_type}', 'EC-16')
+
+
     # Error
     def error(self, token):
         if token:
@@ -564,11 +651,11 @@ temps_count = 0
 
 def get_var(var_id):
     global scopes, current_scope
-    scope_vars = scopes.get_vars_table(current_scope)
-    directory_var = scope_vars.get_one(var_id)
+    scope_variables = scopes.get_variables_table(current_scope)
+    directory_var = scope_variables.get_one(var_id)
     if (directory_var == 'not_in_directory'):
-        program_vars = scopes.get_vars_table('program')
-        directory_var = program_vars.get_one(var_id)
+        program_variables = scopes.get_variables_table('program')
+        directory_var = program_variables.get_one(var_id)
         print_error(f'Error: Variable {var_id} not found in current or global scope', '')
 
     return directory_var
@@ -590,10 +677,10 @@ def create_quad(operator_to_check):
         
         if res_type == 'Error':
             print_error(f'Invalid operation, type mismatch on {right_type} and {left_type} with a {operator}', '')
-        current_scope_vars = scopes.get_vars_table(current_scope)
+        current_scope_variables = scopes.get_variables_table(current_scope)
         temp_var_name = f"_temp{temps_count}"
         temps_count += 1
-        current_scope_vars.add_var(temp_var_name, res_type)
+        current_scope_variables.add_var(temp_var_name, res_type)
         set_quad(operator, left_oper, right_oper, temp_var_name)
         operands_stack.append(temp_var_name)
         types_stack.append(res_type)
