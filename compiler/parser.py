@@ -1,7 +1,9 @@
+import sys
 from compiler.lexer import LexerClass
 from compiler.directory import Variables, ScopesDirectory
 from compiler.semantic_cube import get_type
 from compiler.quadruple import Quadruple
+from compiler.memory import Memory
 from compiler.utils import data_type_IDs, operator_IDs, print_error
 from collections import deque
 from sly import Parser
@@ -39,7 +41,7 @@ class ParserClass(Parser):
         pass
 
     @_('ID COLON var_type np_add_variables SEMI',
-       'ID COMMA np_append_variables variables_3')
+       'ID np_append_variables COMMA variables_3')
     def variables_3(self, p):
         pass
 
@@ -65,24 +67,24 @@ class ParserClass(Parser):
     @_('VOID',
        'var_type')
     def return_type(self, p):
-        return p[1]
+        return p[0]
 
     @_('ID COLON var_type np_add_variables np_add_parameters_type COMMA parameters',
        'ID COLON var_type np_add_variables np_add_parameters_type')
     def parameters(self, p):
         pass
 
-    @_('ID LPAREN np_check_function_call np_func_end_parameters RPAREN',
-       'ID LPAREN np_check_function_call function_parameters np_func_end_parameters RPAREN')
+    @_('ID LPAREN np_check_function_call np_function_end_parameters RPAREN',
+       'ID LPAREN np_check_function_call function_parameters np_function_end_parameters RPAREN')
     def function_call_return(self, p):
         pass
 
-    @_('ID LPAREN np_check_function_call np_func_end_parameters RPAREN SEMI',
-       'ID LPAREN np_check_function_call function_parameters np_func_end_parameters RPAREN SEMI')
+    @_('ID LPAREN np_check_function_call np_function_end_parameters RPAREN SEMI',
+       'ID LPAREN np_check_function_call function_parameters np_function_end_parameters RPAREN SEMI')
     def function_call_void(self, p):
         pass
 
-    @_('expression expression np_add_function_call_parameters',
+    @_('expression np_add_function_call_parameters',
        'expression np_add_function_call_parameters COMMA function_parameters')
     def function_parameters(self, p):
         pass
@@ -169,7 +171,7 @@ class ParserClass(Parser):
         pass
 
     @_('LPAREN np_open_parenthesis expression RPAREN np_close_parenthesis',
-       'ID LBRACKET expression RBRACKET',
+       'ID np_add_id LBRACKET expression RBRACKET',
        'function_call_return',
        'factor_2',
        'statistics')
@@ -177,7 +179,7 @@ class ParserClass(Parser):
         pass
 
     @_('PLUS constant',
-       'MINUS constant',
+       'MINUS np_set_as_negative constant',
        'constant')
     def factor_2(self, p):
         pass
@@ -283,25 +285,24 @@ class ParserClass(Parser):
         create_scope('program', 'void')
         set_quad('GOTO', -1, -1, -1)
         jumps_stack.append(len(quadruples) - 1)
+        create_constant_int_address(0)
 
     @_(' ')
     def np_create_main_scope(self, p):
         global jumps_stack
         create_scope('main', 'void')
-        main_quadruple_position = jumps_stack.pop()
-        old_main_goto_quadruple = quadruples[main_quadruple_position]
-        old_main_goto_quadruple.set_result(len(quadruples))
+        quadruples[jumps_stack.pop()].set_result(len(quadruples))
 
     @_(' ')
     def np_create_new_scope(self, p):
-        global scopes, current_scope
-        function_id = p[-3]
+        global scopes
+        function_ID = p[-3]
         return_type = p[-1]
-        create_scope(function_id, return_type)
+        create_scope(function_ID, return_type)
         if return_type != 'void':
-            global_scope_variables = scopes.get_variables_table('program')
-            global_scope_variables.add_var(function_id, return_type)
-            global_scope_variables.set_arrray_values(function_id, bool_arr, arr_size)
+            global_scope_vars = scopes.get_variables_table('program')
+            global_scope_vars.add_var(function_ID, return_type)
+            global_scope_vars.set_var_address(function_ID, get_new_address(return_type, False, 1, 'program'))
     
     @_(' ')
     def np_end_main(self, p):
@@ -323,49 +324,73 @@ class ParserClass(Parser):
 
     @_(' ')
     def np_add_variables(self, p):
-        global scopes, current_scope, variables_stack
-        var_id = p[-3]
-        variables_stack.append(var_id)
-        variables_type = p[-1]
+        global scopes, current_scope, is_array, variables_stack
+        variables_stack.append(p[-3])
+        vars_type = p[-1]
+        memory_space = 1
         while variables_stack:
-            current_scope_variables = scopes.get_variables_table(current_scope)
-            current_scope_variables.add_var(variables_stack[0], variables_type)
+            current_scope_vars = scopes.get_variables_table(current_scope)
+            current_scope_vars.add_var(variables_stack[0], vars_type)
+            current_scope_vars.set_var_address(variables_stack[0], get_new_address(vars_type, False, memory_space))
             variables_stack.popleft()
 
     @_(' ')
     def np_add_id(self, p):
         global operands_stack, types_stack
-        current_var = get_var(p[-1])
-        var_type = current_var['type']
-        operands_stack.append(p[-1])
-        types_stack.append(var_type)
+        var_ID = p[-1]
+        current_var = get_var_directory(var_ID)
+        operands_stack.append(current_var['address'])
+        types_stack.append(current_var['type'])
 
 
     @_(' ')
     def np_add_int(self, p):
-        global operands_stack, types_stack
-        operands_stack.append(p[-1])
+        global operands_stack, types_stack, memory, constants_table
+        if p[-1] not in constants_table:
+            constants_table[p[-1]] = memory.counters['const']['int']
+            memory.set_count('const', 'int')
+        operands_stack.append(constants_table[p[-1]])
         types_stack.append('int')
     
 
     @_(' ')
     def np_add_float(self, p):
-        global operands_stack, types_stack
-        operands_stack.append(p[-1])
+        global operands_stack, types_stack, memory, constants_table
+        if p[-1] not in constants_table:
+            constants_table[p[-1]] = memory.counters['const']['float']
+            memory.set_count('const', 'float')
+        operands_stack.append(constants_table[p[-1]])
         types_stack.append('float')
 
     @_(' ')
     def np_add_char(self, p):
-        global operands_stack, types_stack
-        operands_stack.append(p[-1])
+        global operands_stack, types_stack, memory, constants_table
+        if p[-1] not in constants_table:
+            constants_table[p[-1]] = memory.counters['const']['char']
+            memory.set_count('const', 'char')
+        operands_stack.append(constants_table[p[-1]])
         types_stack.append('char')
 
     @_(' ')
     def np_add_bool(self, p):
-        global scopes, current_scope
-        operands_stack.append(p[-1])
+        global scopes, current_scope, memory, constants_table, operands_stack, types_stack
+        if p[-1] not in constants_table:
+            constants_table[p[-1]] = memory.counters['const']['bool']
+            memory.set_count('const', 'bool')
+        operands_stack.append(constants_table[p[-1]])
         types_stack.append('bool')
-        
+
+    @_(' ')    
+    def np_set_as_negative(self, p):
+        global memory, constants_table, operands_stack, types_stack, operators_stack
+        if -1 not in constants_table:
+            constants_table[-1] = memory.counters['const']['int']
+            memory.set_count('const', 'int')
+        operands_stack.append(constants_table[-1])
+        types_stack.append('int')
+        operators_stack.append('*')
+
+
     @_(' ')
     def np_add_operator(self, p):
         global operators_stack
@@ -546,6 +571,7 @@ class ParserClass(Parser):
     @_(' ')
     def np_add_parameters_type(self, p):
         global scopes, current_scope
+        # print(f'np_add_parameters_type: {p[-4]}, {p[-3]}, {p[-2]}, {p[-1]}')
         parameter_ID = p[-4]
         parameter_type = p[-2]
         current_scope_parameters = scopes.get_parameters(current_scope)
@@ -555,11 +581,11 @@ class ParserClass(Parser):
 
     @_(' ')
     def np_function_end(self, p):
-        global scopes, current_scope, mem_count
+        global scopes, current_scope, memory
         set_quad('ENDFUNC', -1, -1, -1)
         scopes.set_size(current_scope)
-        mem_count.reset_local_counters()
-        mem_count.reset_temp_counters()
+        memory.reset_local_counters()
+        memory.reset_temp_counters()
 
     @_(' ')
     def np_check_function_call(self, p):
@@ -589,7 +615,7 @@ class ParserClass(Parser):
             print_error(f'The {parameters_count + 1}th argument of function {current_function_call_ID} should be of type {function_call_parameters[parameters_count]}', '')
         
     @_(' ')
-    def np_func_end_parameters(self, p):
+    def np_function_end_parameters(self, p):
         global parameters_stack, scopes, current_scope, temps_count, function_call_ID_stack, operators_stack
         current_function_call_ID = function_call_ID_stack.pop()
         size_of_parameters = len(scopes.get_parameters(current_function_call_ID))
@@ -606,7 +632,7 @@ class ParserClass(Parser):
             temp_var_name = f"_temp{temps_count}"
             temps_count += 1
             current_scope_variables.add_var(temp_var_name, fun_return_type)
-            new_address = get_variables_new_address(fun_return_type, True)
+            new_address = get_new_address(fun_return_type, True)
             current_scope_variables.set_var_address(temp_var_name, new_address)
             directory_var = scopes.get_variables_table('program').get_one(current_function_call_ID)
             set_quad('=', directory_var['address'], -1, new_address)
@@ -616,19 +642,21 @@ class ParserClass(Parser):
     @_(' ')
     def np_set_return_quad(self, p):
         global current_scope, scopes, operands_stack, types_stack
-        func_return_type = scopes.get_return_type(current_scope)
-        if (func_return_type == types_stack.pop()):
+        function_return_type = scopes.get_return_type(current_scope)
+        if (function_return_type == types_stack.pop()):
             set_quad('RETURN', -1, -1, operands_stack.pop())
         else:
-            print_error(f'Function {current_scope} must return a value of type {func_return_type}', '')
+            print_error(f'Function {current_scope} must return a value of type {function_return_type}', '')
 
 
     # Error
     def error(self, token):
-        if token:
-            print(f"Syntax error at token {token.var_type} ({token.value}) on line {token.lineno}")
+        print(f"Syntax Error: {token.value!r}", token)
+        if token is not None:
+            self.index = token.index + 1
         else:
-            print("Syntax error at end of input")
+            self.eof = True
+        sys.exit()
 
 
 
@@ -644,12 +672,19 @@ types_stack = deque()
 jumps_stack = deque()
 quadruples = [];
 
+parameters_count = 0
+parameters_stack = deque()
+function_call_ID_stack = deque()
+current_function_call_ID = None
+
+constants_table = {}
+memory = Memory()
 temps_count = 0
 
 
-# Functions
+# Scopes Functions
 
-def get_var(var_id):
+def get_var_directory(var_id):
     global scopes, current_scope
     scope_variables = scopes.get_variables_table(current_scope)
     directory_var = scope_variables.get_one(var_id)
@@ -675,17 +710,92 @@ def create_quad(operator_to_check):
         left_type = types_stack.pop()
         res_type = get_type(operator, right_type, left_type)
         
-        if res_type == 'Error':
-            print_error(f'Invalid operation, type mismatch on {right_type} and {left_type} with a {operator}', '')
-        current_scope_variables = scopes.get_variables_table(current_scope)
-        temp_var_name = f"_temp{temps_count}"
-        temps_count += 1
-        current_scope_variables.add_var(temp_var_name, res_type)
-        set_quad(operator, left_oper, right_oper, temp_var_name)
-        operands_stack.append(temp_var_name)
-        types_stack.append(res_type)
+        if res_type != 'Error':  
+            current_scope_vars = scopes.get_variables_table(current_scope)
+            temp_var_name = "_temp" + f"{temps_count}"
+            temps_count += 1
+            current_scope_vars.add_var(temp_var_name, res_type)
+            new_address = get_new_address(res_type, True)
+            current_scope_vars.set_var_address(temp_var_name, new_address)
+            set_quad(operator, left_oper, right_oper, new_address)
+            operands_stack.append(new_address)
+            types_stack.append(res_type)
+        else:
+            print_error(f'Cannot perform operation {operator} to {left_type} and {right_type}', '')
 
-def set_quad(first, second, third, fourth):
-    operator_id = operator_IDs[first]
-    new_quadruple = Quadruple(operator_id, second, third, fourth)
-    quadruples.append(new_quadruple)
+def set_quad(oper_ID, left_oper, right_oper, result):
+    quadruples.append(Quadruple(operator_IDs[oper_ID] , left_oper, right_oper, result))
+
+
+# Memory Functions
+
+def get_global_types_map(memory):
+    global_types_map = {
+        'int': memory.counters['global']['int'],
+        'float': memory.counters['global']['float'],
+        'char': memory.counters['global']['char'],
+        'bool': memory.counters['global']['bool'],
+    }
+    return global_types_map
+
+def get_local_types_map(memory):
+    local_types_map = {
+        'int': memory.counters['local']['int'],
+        'float': memory.counters['local']['float'],
+        'char': memory.counters['local']['char'],
+        'bool': memory.counters['local']['bool'],
+    }
+    return local_types_map
+
+def get_temporal_types_map(memory):
+    local_types_map = {
+        'int': memory.counters['temp']['int'],
+        'float': memory.counters['temp']['float'],
+        'char': memory.counters['temp']['char'],
+        'bool': memory.counters['temp']['bool'],
+    }
+    return local_types_map
+
+def create_constant_int_address(value):
+    global memory, constants_table
+    if value in constants_table:
+        return constants_table[value]
+    else:
+        new_mem_address = memory.counters['const']['int']
+        constants_table[value] = new_mem_address
+        memory.set_count('const', 'int')
+        return new_mem_address
+
+def create_pointer_address():
+    global memory
+    new_pointer_address = memory.counters['pointer']['int']
+    memory.set_count('pointer', 'int')
+    return new_pointer_address
+
+def create_temp_address(type):
+    global scopes, temps_count, current_scope
+    current_scope_variables = scopes.get_variables_table(current_scope)
+    temp_var_name = f"_temp{temps_count}"
+    temps_count += 1
+    current_scope_variables.add_var(temp_var_name, 'float')
+    new_address = get_new_address(type, True)
+    current_scope_variables.set_var_address(temp_var_name, new_address)
+    return new_address
+    
+def get_new_address(var_type, is_temp = False, space = 1, other_scope = None):
+    global current_scope
+    global memory
+    if other_scope is not None:
+        scope = other_scope
+    else:
+        scope = current_scope
+    if is_temp:
+        memory.set_count('temp', var_type, space)
+        return get_temporal_types_map(memory)[var_type]
+    if scope == 'program':
+        global_types_map = get_global_types_map(memory)
+        memory.set_count('global', var_type, space)
+        return global_types_map[var_type]
+    local_types_map = get_local_types_map(memory)
+    memory.set_count('local', var_type, space)
+    return local_types_map[var_type]
