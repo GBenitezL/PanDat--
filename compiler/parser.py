@@ -14,6 +14,9 @@ class ParserClass(Parser):
     @_('PROGRAM np_create_global_scope ID SEMI program_2 np_end_program',
        'PROGRAM np_create_global_scope ID SEMI variables program_2 np_end_program')
     def program(self, p):
+        global quadruples
+        for quad in quadruples:
+            quad.print()
         return 'ok'
 
     @_('function program_2',
@@ -40,7 +43,7 @@ class ParserClass(Parser):
     def variables_2(self, p):
         pass
 
-    @_('ID COLON var_type np_add_variables SEMI',
+    @_('ID COLON variable_type np_add_variablesiables SEMI',
        'ID np_append_variables COMMA variables_3')
     def variables_3(self, p):
         pass
@@ -49,11 +52,11 @@ class ParserClass(Parser):
        'FLOAT array',
        'CHAR array',
        'BOOL array')
-    def var_type(self, p):
+    def variable_type(self, p):
         return p[0]
 
-    @_('LBRACKET CTEI RBRACKET',
-       'epsilon')
+    @_('LBRACKET CTEI RBRACKET np_set_as_array',
+       'epsilon np_not_array')
     def array(self, p):
         pass
 
@@ -65,12 +68,12 @@ class ParserClass(Parser):
         return None
 
     @_('VOID',
-       'var_type')
+       'variable_type')
     def return_type(self, p):
         return p[0]
 
-    @_('ID COLON var_type np_add_variables np_add_parameters_type COMMA parameters',
-       'ID COLON var_type np_add_variables np_add_parameters_type')
+    @_('ID COLON variable_type np_add_variablesiables np_add_parameters_type COMMA parameters',
+       'ID COLON variable_type np_add_variablesiables np_add_parameters_type')
     def parameters(self, p):
         pass
 
@@ -121,7 +124,7 @@ class ParserClass(Parser):
         return p[0]
 
     @_('ID np_add_id EQUALS np_add_operator expression np_quad_expression SEMI',
-       'ID np_add_id LBRACKET expression RBRACKET EQUALS np_add_operator expression np_quad_expression SEMI')
+       'ID np_add_id LBRACKET np_check_is_array expression np_verify_array_dim RBRACKET np_get_array_address EQUALS np_add_operator expression np_quad_expression SEMI')
     def assignment(self, p):
         pass
 
@@ -171,7 +174,7 @@ class ParserClass(Parser):
         pass
 
     @_('LPAREN np_open_parenthesis expression RPAREN np_close_parenthesis',
-       'ID np_add_id LBRACKET expression RBRACKET',
+       'ID np_add_id LBRACKET np_check_is_array expression np_verify_array_dim RBRACKET np_get_array_address',
        'function_call_return',
        'factor_2',
        'statistics')
@@ -229,7 +232,7 @@ class ParserClass(Parser):
         pass
 
     @_('ID np_add_id',
-       'ID np_add_id LBRACKET expression RBRACKET')
+       'ID np_add_id LBRACKET np_check_is_array expression np_verify_array_dim np_get_array_address')
     def read_2(self, p):
         pass
     
@@ -300,9 +303,9 @@ class ParserClass(Parser):
         return_type = p[-1]
         create_scope(function_ID, return_type)
         if return_type != 'void':
-            global_scope_vars = scopes.get_variables_table('program')
-            global_scope_vars.add_var(function_ID, return_type)
-            global_scope_vars.set_var_address(function_ID, get_new_address(return_type, False, 1, 'program'))
+            global_scope_variables = scopes.get_variables_table('program')
+            global_scope_variables.add_variables(function_ID, return_type)
+            global_scope_variables.set_variable_address(function_ID, get_new_address(return_type, False, 1, 'program'))
     
     @_(' ')
     def np_end_main(self, p):
@@ -323,22 +326,23 @@ class ParserClass(Parser):
         variables_stack.append(p[-1])
 
     @_(' ')
-    def np_add_variables(self, p):
+    def np_add_variablesiables(self, p):
         global scopes, current_scope, is_array, variables_stack
         variables_stack.append(p[-3])
-        vars_type = p[-1]
+        variables_type = p[-1]
         memory_space = 1
         while variables_stack:
-            current_scope_vars = scopes.get_variables_table(current_scope)
-            current_scope_vars.add_var(variables_stack[0], vars_type)
-            current_scope_vars.set_var_address(variables_stack[0], get_new_address(vars_type, False, memory_space))
+            current_scope_variables = scopes.get_variables_table(current_scope)
+            current_scope_variables.add_variables(variables_stack[0], variables_type)
+            current_scope_variables.set_variable_address(variables_stack[0], get_new_address(variables_type, False, memory_space))
             variables_stack.popleft()
 
     @_(' ')
     def np_add_id(self, p):
         global operands_stack, types_stack
-        var_ID = p[-1]
-        current_var = get_var_directory(var_ID)
+        variable_ID = p[-1]
+        current_var = get_variable_directory(variable_ID)
+        print(variable_ID)
         operands_stack.append(current_var['address'])
         types_stack.append(current_var['type'])
 
@@ -528,17 +532,17 @@ class ParserClass(Parser):
         for_length = operands_stack.pop()
         if types_stack.pop() == 'int':
             for_value = operands_stack.pop()
-            for_var_type = types_stack.pop()
+            for_variable_type = types_stack.pop()
         else:
             print_error('Value for For loop update variable should be int', '')
         
-        if get_type('+', for_var_type, 'int') == 'int':
+        if get_type('+', for_variable_type, 'int') == 'int':
             set_quad('+', for_value, for_length, for_value)
             end_pos = jumps_stack.pop()
             set_quad('GOTO', -1, -1, jumps_stack.pop())
             quadruples[end_pos].set_result(len(quadruples))
         else:
-            print_error(f'Cannot perform operation + to {for_var_type} and int', '')
+            print_error(f'Cannot perform operation + to {for_variable_type} and int', '')
 
 
     @_(' ')
@@ -571,7 +575,6 @@ class ParserClass(Parser):
     @_(' ')
     def np_add_parameters_type(self, p):
         global scopes, current_scope
-        # print(f'np_add_parameters_type: {p[-4]}, {p[-3]}, {p[-2]}, {p[-1]}')
         parameter_ID = p[-4]
         parameter_type = p[-2]
         current_scope_parameters = scopes.get_parameters(current_scope)
@@ -629,11 +632,11 @@ class ParserClass(Parser):
         fun_return_type = scopes.get_return_type(current_function_call_ID)
         if fun_return_type != 'void':
             current_scope_variables = scopes.get_variables_table(current_scope)
-            temp_var_name = f"_temp{temps_count}"
+            temp_variable_name = f"_temp{temps_count}"
             temps_count += 1
-            current_scope_variables.add_var(temp_var_name, fun_return_type)
+            current_scope_variables.add_variables(temp_variable_name, fun_return_type)
             new_address = get_new_address(fun_return_type, True)
-            current_scope_variables.set_var_address(temp_var_name, new_address)
+            current_scope_variables.set_variable_address(temp_variable_name, new_address)
             directory_var = scopes.get_variables_table('program').get_one(current_function_call_ID)
             set_quad('=', directory_var['address'], -1, new_address)
             operands_stack.append(new_address)
@@ -647,6 +650,65 @@ class ParserClass(Parser):
             set_quad('RETURN', -1, -1, operands_stack.pop())
         else:
             print_error(f'Function {current_scope} must return a value of type {function_return_type}', '')
+
+    ##### Arrays #####
+
+    @_(' ')
+    def np_set_as_array(self, p):
+        global is_array, array_size
+        is_array = True
+        array_size = p[-2]
+
+        create_constant_int_address(array_size) if array_size >= 1 else print_error('Array size should be greater than 1', 'EC-05')
+
+    @_(' ')
+    def np_not_array(self, p):
+        global is_array, array_size
+        is_array = False
+        array_size = None
+
+    @_(' ')
+    def np_check_is_array(self, p):
+        global operands_stack, types_stack, operators_stack
+        operands_stack.pop()   
+        types_stack.pop()
+        array_ID = p[-3]
+
+        current_var = get_variable_directory(array_ID)
+        if current_var['is_array']:
+            operands_stack.append(current_var['address'])
+            types_stack.append(current_var['type'])
+            operators_stack.append('|')
+        else:
+            print_error(f'Array {array_ID} is not defined.', 'EC-19')
+        
+
+    @_(' ')
+    def np_get_array_address(self, p):
+        global operands_stack, types_stack, constants_table
+        accessing_array_value = operands_stack.pop()
+        types_stack.pop()
+        array_init_address_const_address = create_constant_int_address(operands_stack.pop())
+        pointer_address = create_pointer_address()
+        
+        set_quad('+', accessing_array_value, array_init_address_const_address, pointer_address)
+        operators_stack.pop()
+
+        operands_stack.append(pointer_address)
+
+    @_(' ')
+    def np_verify_array_dim(self, p):
+        global operands_stack, constants_table, types_stack
+        accessing_array_type = types_stack[-1]
+        array_ID = p[-5]
+        value_to_access = operands_stack[-1]
+        lower_limit = constants_table[0]
+        upper_limit = constants_table[get_variable_directory(array_ID)['array_size']]
+
+        if accessing_array_type == 'int':
+            set_quad('VERIFY', value_to_access, lower_limit, upper_limit)
+        else:
+            print_error(f'Array {array_ID} must be accesed using an int value', '')
 
 
     # Error
@@ -684,14 +746,14 @@ temps_count = 0
 
 # Scopes Functions
 
-def get_var_directory(var_id):
+def get_variable_directory(variable_id):
     global scopes, current_scope
     scope_variables = scopes.get_variables_table(current_scope)
-    directory_var = scope_variables.get_one(var_id)
+    directory_var = scope_variables.get_one(variable_id)
     if (directory_var == 'not_in_directory'):
         program_variables = scopes.get_variables_table('program')
-        directory_var = program_variables.get_one(var_id)
-        print_error(f'Error: Variable {var_id} not found in current or global scope', '')
+        directory_var = program_variables.get_one(variable_id)
+        print_error(f'Error: Variable {variable_id} not found in current or global scope', '')
 
     return directory_var
 
@@ -711,12 +773,12 @@ def create_quad(operator_to_check):
         res_type = get_type(operator, right_type, left_type)
         
         if res_type != 'Error':  
-            current_scope_vars = scopes.get_variables_table(current_scope)
-            temp_var_name = "_temp" + f"{temps_count}"
+            current_scope_variables = scopes.get_variables_table(current_scope)
+            temp_variable_name = "_temp" + f"{temps_count}"
             temps_count += 1
-            current_scope_vars.add_var(temp_var_name, res_type)
+            current_scope_variables.add_variables(temp_variable_name, res_type)
             new_address = get_new_address(res_type, True)
-            current_scope_vars.set_var_address(temp_var_name, new_address)
+            current_scope_variables.set_variable_address(temp_variable_name, new_address)
             set_quad(operator, left_oper, right_oper, new_address)
             operands_stack.append(new_address)
             types_stack.append(res_type)
@@ -775,14 +837,14 @@ def create_pointer_address():
 def create_temp_address(type):
     global scopes, temps_count, current_scope
     current_scope_variables = scopes.get_variables_table(current_scope)
-    temp_var_name = f"_temp{temps_count}"
+    temp_variable_name = f"_temp{temps_count}"
     temps_count += 1
-    current_scope_variables.add_var(temp_var_name, 'float')
+    current_scope_variables.add_variables(temp_variable_name, 'float')
     new_address = get_new_address(type, True)
-    current_scope_variables.set_var_address(temp_var_name, new_address)
+    current_scope_variables.set_variable_address(temp_variable_name, new_address)
     return new_address
     
-def get_new_address(var_type, is_temp = False, space = 1, other_scope = None):
+def get_new_address(variable_type, is_temp = False, space = 1, other_scope = None):
     global current_scope
     global memory
     if other_scope is not None:
@@ -790,12 +852,12 @@ def get_new_address(var_type, is_temp = False, space = 1, other_scope = None):
     else:
         scope = current_scope
     if is_temp:
-        memory.set_count('temp', var_type, space)
-        return get_temporal_types_map(memory)[var_type]
+        memory.set_count('temp', variable_type, space)
+        return get_temporal_types_map(memory)[variable_type]
     if scope == 'program':
         global_types_map = get_global_types_map(memory)
-        memory.set_count('global', var_type, space)
-        return global_types_map[var_type]
+        memory.set_count('global', variable_type, space)
+        return global_types_map[variable_type]
     local_types_map = get_local_types_map(memory)
-    memory.set_count('local', var_type, space)
-    return local_types_map[var_type]
+    memory.set_count('local', variable_type, space)
+    return local_types_map[variable_type]
