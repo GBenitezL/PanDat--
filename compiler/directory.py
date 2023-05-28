@@ -19,7 +19,7 @@ class Variables(Directory):
         super().__init__()
         self.scope = scope
     
-    def add_variables(self, id, type):
+    def add_variable(self, id, type):
         if id in self.directory:
             print_error(f"Variable '{id}' has already been declared in this scope", 'EC-04')
         if type == 'void' or type not in ['int', 'float', 'char', 'bool']:
