@@ -104,6 +104,8 @@ class ParserClass(Parser):
        'return_stmt statements_2',
        'function_call_void statements_2',
        'plot statements_2',
+       'corr statements_2',
+       'set_logic statements_2',
        'regression statements_2')
     def statements(self, p):
         return (p[0], p[1])
@@ -114,7 +116,7 @@ class ParserClass(Parser):
         'variance',
         'std',
         'rand',
-        'corr')
+        'iqr')
     def statistics(self, p):
         pass
 
@@ -256,6 +258,10 @@ class ParserClass(Parser):
     def std(self, p):
         pass
 
+    @_('IQR LPAREN ID RPAREN')
+    def iqr(self, p):
+        pass
+
     @_('RAND LPAREN CTEI COMMA CTEI RPAREN')
     def rand(self, p):
         pass
@@ -264,9 +270,58 @@ class ParserClass(Parser):
     def corr(self, p):
         pass
     
-    @_('PLOT LPAREN ID COMMA ID COMMA CTESTRING RPAREN SEMI',
-       'PLOT LPAREN ID COMMA CTESTRING RPAREN SEMI')
+    @_('union',
+       'diff',
+       'intersect')
+    def set_logic(self, p):
+        pass
+
+    @_('UNION LPAREN ID COMMA ID RPAREN SEMI')
+    def union(self, p):
+        pass
+
+    @_('DIFF LPAREN ID COMMA ID RPAREN SEMI')
+    def diff(self, p):
+        pass
+
+    @_('INTERSECT LPAREN ID COMMA ID RPAREN SEMI')
+    def intersect(self, p):
+        pass
+
+    @_('one_array_plot',
+       'two_array_plot')
     def plot(self, p):
+        pass
+
+    @_('hist_plot',
+       'box_plot')
+    def one_array_plot(self, p):
+        pass
+
+    @_('scatter_plot',
+       'line_plot',
+       'bar_plot')
+    def two_array_plot(self, p):
+        pass
+
+    @_('HISTPLOT LPAREN ID RPAREN SEMI')
+    def hist_plot(self, p):
+        pass
+    
+    @_('BOXPLOT LPAREN ID RPAREN SEMI')
+    def box_plot(self, p):
+        pass
+
+    @_('SCATTERPLOT LPAREN ID RPAREN SEMI')
+    def scatter_plot(self, p):
+        pass
+
+    @_('LINEPLOT LPAREN ID RPAREN SEMI')
+    def line_plot(self, p):
+        pass
+
+    @_('BARPLOT LPAREN ID RPAREN SEMI')
+    def bar_plot(self, p):
         pass
 
     @_('REGRESSION LPAREN ID COMMA ID RPAREN SEMI')
