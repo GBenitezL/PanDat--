@@ -25,10 +25,18 @@ class LexerClass(Lexer):
         'median': 'MEDIAN',
         'variance': 'VARIANCE',
         'std': 'STD',
+        'iqr': 'IQR',
         'rand': 'RAND',
-        'plot': 'PLOT',
         'corr': 'CORR',
-        'regression': 'REGRESSION'
+        'union': 'UNION',
+        'diff': 'DIFF',
+        'intersect': 'INTERSECT',
+        'regression': 'REGRESSION',
+        'histplot': 'HISTPLOT',
+        'boxplot': 'BOXPLOT',
+        'scatterplot': 'SCATTERPLOT',
+        'lineplot': 'LINEPLOT',
+        'barplot': 'BARPLOT'
     }
 
     tokens = ['ID', 'CTEF', 'CTEI', 'CTEC', 'CTESTRING', 'COMMA', 'COLON', 'SEMI',
