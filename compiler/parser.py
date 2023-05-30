@@ -656,7 +656,7 @@ class ParserClass(Parser):
             parameters_stack.append(0)
             function_call_ID_stack.append(current_function_call_ID)
             set_quad('ERA', -1, -1, current_function_call_ID)
-            operators_stack.append('~')
+            operators_stack.append('fb_function')
         else:
             print_error(f'Function {current_function_call_ID} is not defined', '')
 
@@ -717,7 +717,7 @@ class ParserClass(Parser):
         is_array = True
         array_size = p[-2]
 
-        create_constant_int_address(array_size) if array_size >= 1 else print_error('Array size should be greater than 1', 'EC-05')
+        create_constant_int_address(array_size) if array_size >= 1 else print_error('Array size should be greater than 1', '')
 
     @_(' ')
     def np_not_array(self, p):
@@ -736,9 +736,9 @@ class ParserClass(Parser):
         if current_var['is_array']:
             operands_stack.append(current_var['address'])
             types_stack.append(current_var['type'])
-            operators_stack.append('|')
+            operators_stack.append('fb_array')
         else:
-            print_error(f'Array {array_ID} is not defined.', 'EC-19')
+            print_error(f'Array {array_ID} is not defined.', '')
         
 
     @_(' ')
@@ -813,7 +813,7 @@ def get_variable_directory(variable_ID):
     if (directory_var == None):
         directory_var = scopes.get_variables_table('program').get_one(variable_ID)
         if (directory_var == None):
-            print_error(f'Variable {variable_ID} not found in current or global scope', 'EC-06')
+            print_error(f'Variable {variable_ID} not found in current or global scope', '')
     return directory_var
 
 def create_scope(scope_id, return_type):
