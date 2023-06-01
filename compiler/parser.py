@@ -98,7 +98,7 @@ class ParserClass(Parser):
 
     @_('assignment statements_2',
        'condition statements_2',
-       'write statements_2',
+       'print statements_2',
        'read statements_2',
        'loop statements_2',
        'return_stmt statements_2',
@@ -111,6 +111,7 @@ class ParserClass(Parser):
         return (p[0], p[1])
 
     @_('sum',
+        'count',
         'mean',
         'median',
         'variance',
@@ -211,22 +212,21 @@ class ParserClass(Parser):
     def for_loop(self, p):
         pass
 
-    @_('PRINT LPAREN write_2 RPAREN SEMI')
-    def write(self, p):
+    @_('PRINT LPAREN print_single RPAREN SEMI',
+       'PRINT LPAREN print_multiple RPAREN SEMI')
+    def print(self, p):
         pass
 
-    @_('expression np_quad_print_exp COMMA write_2_multiple',
-       'expression np_quad_print_exp',
-       'CTESTRING np_quad_print_str COMMA write_2_multiple',
+    @_('expression np_quad_print_exp',
        'CTESTRING np_quad_print_str')
-    def write_2(self, p):
+    def print_single(self, p):
         pass
 
-    @_('expression np_quad_print_multiple_exp COMMA write_2_multiple',
-       'expression np_quad_print_multiple_exp',
-       'CTESTRING np_quad_print_multiple_str COMMA write_2_multiple',
-       'CTESTRING np_quad_print_multiple_str')
-    def write_2_multiple(self, p):
+    @_('expression np_quad_print_multiple_exp COMMA print_multiple',
+       'expression np_quad_print_multiple_exp np_print_end',
+       'CTESTRING np_quad_print_multiple_str COMMA print_multiple',
+       'CTESTRING np_quad_print_multiple_str np_print_end')
+    def print_multiple(self, p):
         pass
 
     @_('READ LPAREN read_2 RPAREN np_quad_read SEMI')
@@ -242,31 +242,35 @@ class ParserClass(Parser):
     def sum(self, p):
         pass
 
-    @_('MEAN LPAREN ID RPAREN')
+    @_('COUNT LPAREN ID RPAREN')
+    def count(self, p):
+        pass
+
+    @_('MEAN LPAREN ID RPAREN np_set_statistics_quad')
     def mean(self, p):
         pass
 
-    @_('MEDIAN LPAREN ID RPAREN')
+    @_('MEDIAN LPAREN ID RPAREN np_set_statistics_quad')
     def median(self, p):
         pass
 
-    @_('VARIANCE LPAREN ID RPAREN')
+    @_('VARIANCE LPAREN ID RPAREN np_set_statistics_quad')
     def variance(self, p):
         pass
 
-    @_('STD LPAREN ID RPAREN')
+    @_('STD LPAREN ID RPAREN np_set_statistics_quad')
     def std(self, p):
         pass
 
-    @_('IQR LPAREN ID RPAREN')
+    @_('IQR LPAREN ID RPAREN np_set_statistics_quad')
     def iqr(self, p):
         pass
 
-    @_('RAND LPAREN CTEI COMMA CTEI RPAREN')
+    @_('RAND LPAREN CTEI COMMA CTEI RPAREN np_set_rand_quad')
     def rand(self, p):
         pass
 
-    @_('CORR LPAREN ID COMMA ID RPAREN SEMI')
+    @_('CORR LPAREN ID COMMA ID RPAREN np_verify_same_length SEMI')
     def corr(self, p):
         pass
     
@@ -530,6 +534,11 @@ class ParserClass(Parser):
         types_stack.pop()
         set_quad('PRINT_MULTIPLE', -1, -1, operands_stack.pop())
 
+    @_(' ')
+    def np_print_end(self, p):
+        set_quad('PRINT_END', -1, -1, -1)
+        pass
+
 
     # Non-Linear Statements
 
@@ -769,6 +778,48 @@ class ParserClass(Parser):
             print_error(f'Array {array_ID} must be accesed using an int value', '')
 
 
+    @_(' ')
+    def np_verify_same_length(self, p):
+        x_array_var = get_variable_directory(p[-4])
+        y_array_var = get_variable_directory(p[-2])
+
+        if x_array_var['is_array'] and y_array_var['is_array']:
+            if (x_array_var['type'] in ['int', 'float']) and (y_array_var['type'] in ['int', 'float']):
+                if x_array_var['array_size'] != y_array_var['array_size']:
+                    print_error(f'Arrays{p[-4]} and {p[-2]} must be of equal length', 'EC-17')
+            else:
+                print_error('The plot function requires 2 arrays of type int or float', 'EC-18')
+        else:
+            print_error('The plot function requires 2 arrays of type int or float', 'EC-18')
+
+
+    ##### Statistical Functions #####
+
+    @_(' ')
+    def np_set_rand_quad(self, p):
+        result_address = create_temp_address('int')
+        lower_limit = p[-4]
+        upper_limit = p[-2]
+        operands_stack.append(result_address)
+        types_stack.append('int')
+        set_quad('RAND', lower_limit, upper_limit, result_address)
+
+    @_(' ')
+    def np_set_statistics_quad(self, p):
+        array_ID = p[-2]
+        quad_type = p[-4]
+
+        match quad_type:
+            case 'mean':
+                create_quad_statistics(array_ID, 'MEAN')
+            case 'median':
+                create_quad_statistics(array_ID, 'MEDIAN')
+            case 'variance':
+                create_quad_statistics(array_ID, 'VARIANCE')
+            case 'std':
+                create_quad_statistics(array_ID, 'STD')
+
+
     # Error
     def error(self, token):
         print(f"Syntax Error: {token.value!r}", token)
@@ -920,3 +971,14 @@ def get_new_address(variable_type, is_temp = False, space = 1, other_scope = Non
     local_types_map = get_local_types_map(memory)
     memory.set_count('local', variable_type, space)
     return local_types_map[variable_type]
+
+
+def create_quad_statistics(array_ID, stat_operator):
+    current_var = get_variable_directory(array_ID)
+    if (current_var['is_array']) or (current_var['type'] in ['int', 'float']):    
+        result_address = create_temp_address('float')
+        operands_stack.append(result_address)
+        types_stack.append('float')
+        set_quad(stat_operator, current_var['array_size'], current_var['address'], result_address)
+    else:
+        print_error('{stat_operator} function requires an array of floats or integers.', 'EC-07')

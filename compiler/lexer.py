@@ -21,6 +21,7 @@ class LexerClass(Lexer):
         'print': 'PRINT',
         'read': 'READ',
         'sum': 'SUM',
+        'count': 'COUNT',
         'mean': 'MEAN',
         'median': 'MEDIAN',
         'variance': 'VARIANCE',
