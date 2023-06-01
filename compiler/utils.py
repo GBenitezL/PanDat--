@@ -32,6 +32,7 @@ operator_IDs = {
     'READ': 15,
     'PRINT': 16, 
     'PRINT_MULTIPLE': 17,
+    'PRINT_END': 18,
     
     'GOTO': 20,
     'GOTOV': 21,
@@ -46,11 +47,22 @@ operator_IDs = {
     'MEAN': 30,
     'MEDIAN': 31,
     'VARIANCE': 32,
-    'STD': 33,
-    'RAND': 34,
-    'PLOT': 35,
-    'CORR': 36,
-    'REGRESSION': 37
+    'IQR': 33,
+    'CORR': 34,
+    'STD': 35,
+    'RAND': 36,
+    'SUM': 37,
+    'COUNT': 38,
+    'REGRESSION': 39,
+
+    'UNION': 40,
+    'DIFF': 41,
+    'INTERSECT': 42,
+    'HISTPLOT': 43,
+    'SCATTERPLOT': 44,
+    'LINEPLOT': 45,
+    'BARPLOT': 46
+
 }
 
 
