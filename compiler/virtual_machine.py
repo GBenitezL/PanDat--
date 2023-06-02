@@ -218,13 +218,17 @@ def print_value(value, multiple = False):
     is_address = type(value) is int
     if(is_address):
         value_to_print = get_pointer_value(value)
+        sys.stdout.write(str(value_to_print))
+    elif (value == "`n"):
+        print()
     else:
         value_to_print = value[1:-1]
+        sys.stdout.write(str(value_to_print))
     
-    if multiple:
-        print(value_to_print, end=' ')
-    else:
-        print(value_to_print)
+    # if value_to_print == "/n":
+    #     print(value_to_print)
+    # else:
+    #     sys.stdout.write(str(value_to_print))
 
 def print_end():
     print()
@@ -303,7 +307,7 @@ def check_quadruples():
                 print_value(result, multiple=True)
                 update_instruction_pointer()
             case 18:
-                print_end()
+                # print_end()
                 update_instruction_pointer()
             case 15:
                 save_pointer_value_on_input(result, right_oper)

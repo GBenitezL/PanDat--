@@ -43,7 +43,7 @@ class LexerClass(Lexer):
     tokens = ['ID', 'CTEF', 'CTEI', 'CTEC', 'CTESTRING', 'COMMA', 'COLON', 'SEMI',
     'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET','LBRACE', 'RBRACE',
     'EQUALS', 'LT', 'LE', 'GT', 'GE', 'EQ', 'NE', 'OR', 'AND',
-    'PLUS', 'MINUS', 'TIMES', 'DIVIDE', *keywords.values()]
+    'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'NL', *keywords.values()]
 
     ignore = r' \t'
     COMMA = r','
@@ -68,6 +68,7 @@ class LexerClass(Lexer):
     MINUS = r'-'
     TIMES = r'\*'
     DIVIDE = r'/'
+    NL = r'`n'
     CTESTRING = r'\"(\\.|[^"\\])*\"'
     CTEC = r'\'(.{1})\''
 
@@ -97,6 +98,7 @@ class LexerClass(Lexer):
             print("Lexical Error:", t.value)
             t.value=0
         return t
+    
 
     def error(self, t):
         print(f"Lexer error: Illegal character '{t.value[0]}' at line {self.lineno}")

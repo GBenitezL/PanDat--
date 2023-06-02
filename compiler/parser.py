@@ -212,21 +212,22 @@ class ParserClass(Parser):
     def for_loop(self, p):
         pass
 
-    @_('PRINT LPAREN print_single RPAREN SEMI',
-       'PRINT LPAREN print_multiple RPAREN SEMI')
+    @_('PRINT LPAREN print_2 RPAREN SEMI')
     def print(self, p):
         pass
 
     @_('expression np_quad_print_exp',
-       'CTESTRING np_quad_print_str')
-    def print_single(self, p):
+       'CTESTRING np_quad_print_str',
+       'expression np_quad_print_exp COMMA print_2',
+       'CTESTRING np_quad_print_str COMMA print_2',
+       'new_line')
+    def print_2(self, p):
         pass
 
-    @_('expression np_quad_print_multiple_exp COMMA print_multiple',
-       'expression np_quad_print_multiple_exp np_print_end',
-       'CTESTRING np_quad_print_multiple_str COMMA print_multiple',
-       'CTESTRING np_quad_print_multiple_str np_print_end')
-    def print_multiple(self, p):
+    @_('NL np_quad_print_str COMMA print_2',
+       'NL np_quad_print_str',
+       'epsilon')
+    def new_line(self, p):
         pass
 
     @_('READ LPAREN read_2 RPAREN np_quad_read SEMI')
@@ -523,21 +524,6 @@ class ParserClass(Parser):
         global operands_stack, types_stack
         types_stack.pop()
         set_quad('PRINT', -1, -1, operands_stack.pop())
-
-    @_(' ')
-    def np_quad_print_multiple_str(self, p):
-        set_quad('PRINT_MULTIPLE', -1, -1, p[-1])
-
-    @_(' ')
-    def np_quad_print_multiple_exp(self, p):
-        global operands_stack, types_stack
-        types_stack.pop()
-        set_quad('PRINT_MULTIPLE', -1, -1, operands_stack.pop())
-
-    @_(' ')
-    def np_print_end(self, p):
-        set_quad('PRINT_END', -1, -1, -1)
-        pass
 
 
     # Non-Linear Statements

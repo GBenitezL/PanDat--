@@ -38,7 +38,7 @@ def print_constants():
 
 def main(argv):
     if len(argv) != 2:
-        sys.exit("To run a program, type the following command structure: python main.py file_name.fmm")
+        sys.exit("To run a program, type the following command structure: python main.py file_name.pdat")
     file = argv[1]
 
     # if str(file)[-4:] != ".pdat":
