@@ -32,7 +32,6 @@ operator_IDs = {
     'READ': 15,
     'PRINT': 16, 
     'PRINT_MULTIPLE': 17,
-    'PRINT_END': 18,
     
     'GOTO': 20,
     'GOTOV': 21,
@@ -59,13 +58,15 @@ operator_IDs = {
     'DIFF': 41,
     'INTERSECT': 42,
     'HISTPLOT': 43,
-    'SCATTERPLOT': 44,
-    'LINEPLOT': 45,
-    'BARPLOT': 46
+    'BOXPLOT': 44,
+    'SCATTERPLOT': 45,
+    'LINEPLOT': 46,
+    'BARPLOT': 47
 
 }
 
 
 def print_error(message, id=''):
-    print(f'Error ID:{id}\n', f'Description: {message}', '\n')
+    print(f'Error ID:{id}')
+    print(f'Description: {message}', '\n')
     sys.exit()

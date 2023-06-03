@@ -14,9 +14,9 @@ class ParserClass(Parser):
     @_('PROGRAM np_create_global_scope ID SEMI program_2 np_end_program',
        'PROGRAM np_create_global_scope ID SEMI variables program_2 np_end_program')
     def program(self, p):
-        global quadruples
-        for quad in quadruples:
-            quad.print()
+        # global quadruples
+        # for quad in quadruples:
+        #     quad.print()
         return 'ok'
 
     @_('function program_2',
@@ -239,11 +239,11 @@ class ParserClass(Parser):
     def read_2(self, p):
         pass
     
-    @_('SUM LPAREN ID RPAREN')
+    @_('SUM LPAREN ID RPAREN np_set_statistics_quad')
     def sum(self, p):
         pass
 
-    @_('COUNT LPAREN ID RPAREN')
+    @_('COUNT LPAREN ID RPAREN np_set_statistics_quad')
     def count(self, p):
         pass
 
@@ -271,7 +271,7 @@ class ParserClass(Parser):
     def rand(self, p):
         pass
 
-    @_('CORR LPAREN ID COMMA ID RPAREN np_verify_same_length SEMI')
+    @_('CORR LPAREN ID COMMA ID RPAREN np_verify_same_length np_set_corr_quad SEMI')
     def corr(self, p):
         pass
     
@@ -281,15 +281,15 @@ class ParserClass(Parser):
     def set_logic(self, p):
         pass
 
-    @_('UNION LPAREN ID COMMA ID RPAREN SEMI')
+    @_('UNION LPAREN ID COMMA ID RPAREN np_set_stat_print_quad SEMI')
     def union(self, p):
         pass
 
-    @_('DIFF LPAREN ID COMMA ID RPAREN SEMI')
+    @_('DIFF LPAREN ID COMMA ID RPAREN np_set_stat_print_quad SEMI')
     def diff(self, p):
         pass
 
-    @_('INTERSECT LPAREN ID COMMA ID RPAREN SEMI')
+    @_('INTERSECT LPAREN ID COMMA ID RPAREN np_set_stat_print_quad SEMI')
     def intersect(self, p):
         pass
 
@@ -309,27 +309,27 @@ class ParserClass(Parser):
     def two_array_plot(self, p):
         pass
 
-    @_('HISTPLOT LPAREN ID RPAREN SEMI')
+    @_('HISTPLOT LPAREN ID RPAREN np_set_one_array_plot SEMI')
     def hist_plot(self, p):
         pass
     
-    @_('BOXPLOT LPAREN ID RPAREN SEMI')
+    @_('BOXPLOT LPAREN ID RPAREN np_set_one_array_plot SEMI')
     def box_plot(self, p):
         pass
 
-    @_('SCATTERPLOT LPAREN ID RPAREN SEMI')
+    @_('SCATTERPLOT LPAREN ID COMMA ID RPAREN np_verify_same_length np_set_two_array_plot SEMI')
     def scatter_plot(self, p):
         pass
 
-    @_('LINEPLOT LPAREN ID RPAREN SEMI')
+    @_('LINEPLOT LPAREN ID COMMA ID RPAREN np_verify_same_length np_set_two_array_plot SEMI')
     def line_plot(self, p):
         pass
 
-    @_('BARPLOT LPAREN ID RPAREN SEMI')
+    @_('BARPLOT LPAREN ID COMMA ID RPAREN np_verify_same_length np_set_two_array_plot SEMI')
     def bar_plot(self, p):
         pass
 
-    @_('REGRESSION LPAREN ID COMMA ID RPAREN SEMI')
+    @_('REGRESSION LPAREN ID COMMA ID RPAREN np_set_stat_print_quad SEMI')
     def regression(self, p):
         pass
 
@@ -794,7 +794,6 @@ class ParserClass(Parser):
     def np_set_statistics_quad(self, p):
         array_ID = p[-2]
         quad_type = p[-4]
-
         match quad_type:
             case 'mean':
                 create_quad_statistics(array_ID, 'MEAN')
@@ -804,7 +803,58 @@ class ParserClass(Parser):
                 create_quad_statistics(array_ID, 'VARIANCE')
             case 'std':
                 create_quad_statistics(array_ID, 'STD')
+            case 'sum':
+                create_quad_statistics(array_ID, 'SUM')
+            case 'count':
+                create_quad_statistics(array_ID, 'COUNT')
+            case 'iqr':
+                create_quad_statistics(array_ID, 'IQR')
 
+    @_(' ')
+    def np_set_stat_print_quad(self, p):
+        quad_type = p[-6]
+        array_1 = get_variable_directory(p[-4])
+        array_2 = get_variable_directory(p[-2])
+        match quad_type:
+            case 'union':
+                set_quad('UNION', array_1['address'], array_2['address'], array_1['array_size'])
+            case 'diff':
+                set_quad('DIFF', array_1['address'], array_2['address'], array_1['array_size'])
+            case 'intersect':
+                set_quad('INTERSECT', array_1['address'], array_2['address'], array_1['array_size'])
+            case 'regression':
+                set_quad('REGRESSION', array_1['address'], array_2['address'], array_1['array_size'])
+            case 'corr':
+                set_quad('CORR', array_1['address'], array_2['address'], array_1['array_size'])
+
+    @_(' ')
+    def np_set_corr_quad(self, p):
+        array_1 = get_variable_directory(p[-5])
+        array_2 = get_variable_directory(p[-3])
+        set_quad('CORR', array_1['address'], array_2['address'], array_1['array_size'])
+    
+    @_(' ')
+    def np_set_one_array_plot(self, p):
+        quad_type = p[-4]
+        array = get_variable_directory(p[-2])
+        match quad_type:
+            case 'histplot':
+                set_quad('HISTPLOT', array['address'], -1, array['array_size'])
+            case 'boxplot':
+                set_quad('BOXPLOT', array['address'], -1, array['array_size'])
+
+    @_(' ')
+    def np_set_two_array_plot(self, p):
+        quad_type = p[-7]
+        x_array_var = get_variable_directory(p[-5])
+        y_array_var = get_variable_directory(p[-3])
+        match quad_type:
+            case 'scatterplot':
+                set_quad('SCATTERPLOT', x_array_var['address'], y_array_var['address'], x_array_var['array_size'])
+            case 'lineplot':
+                set_quad('LINEPLOT', x_array_var['address'], y_array_var['address'], x_array_var['array_size'])
+            case 'barplot':
+                set_quad('BARPLOT', x_array_var['address'], y_array_var['address'], x_array_var['array_size'])
 
     # Error
     def error(self, token):
@@ -967,4 +1017,4 @@ def create_quad_statistics(array_ID, stat_operator):
         types_stack.append('float')
         set_quad(stat_operator, current_var['array_size'], current_var['address'], result_address)
     else:
-        print_error('{stat_operator} function requires an array of floats or integers.', 'EC-07')
+        print_error('{stat_operator} function requires an array of floats or integers.', '')

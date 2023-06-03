@@ -3,7 +3,8 @@ import operator
 import statistics
 import random
 import matplotlib.pyplot as plt
-import seaborn
+import seaborn as sns
+from scipy import stats
 from collections import deque
 
 from compiler.parser import scopes, quadruples, constants_table
@@ -87,14 +88,16 @@ def update_instruction_pointer(new_pos=None):
 
 def find_address(pointer):
     value = current_mem.get(pointer) if pointer in current_mem else global_mem.get(pointer) 
-
     if value is None:
         print_error(f'Cannot locate value. Pointer {pointer} has not been assigned yet', 'EE-04')
 
     value = True if value == 'true' else False if value == 'false' else value
-
     return value
 
+def find_address_no_error(pointer):
+    value = current_mem.get(pointer) if pointer in current_mem else global_mem.get(pointer) 
+    value = True if value == 'true' else False if value == 'false' else value
+    return value
 
 def save_pointer_value_on_input(save_address, type_to_read):
     input_value = input()
@@ -186,6 +189,8 @@ def verify_array_access(access_value, array_inferior_limit, array_upp_limit):
 def get_array_as_list(starting_address, array_size):
     return [find_address(starting_address + x) for x in range(array_size)]
 
+def get_array_as_list_with_none(starting_address, array_size):
+    return [find_address_no_error(starting_address + x) for x in range(array_size)]
 
 
 ##### STATISTICS #####
@@ -204,13 +209,87 @@ def calculate_variance_value(array_size, array_variable_address, save_address_po
 def calculate_std_value(array_size, array_variable_address, save_address_pointer_value):
     save_pointer_value(save_address_pointer_value, statistics.stdev(get_array_as_list(array_variable_address, array_size)))
 
+def calculate_sum_value(array_size, array_variable_address, save_address_pointer_value):
+    save_pointer_value(save_address_pointer_value, sum(get_array_as_list(array_variable_address, array_size)))
+
+def calculate_count_value(array_size, array_variable_address, save_address_pointer_value):
+    array = get_array_as_list_with_none(array_variable_address, array_size)
+    count = 0
+    for value in array:
+        if value != None:
+            count += 1
+    save_pointer_value(save_address_pointer_value, count)
+
+def calculate_iqr_value(array_size, array_variable_address, save_address_pointer_value):
+    sorted_array = sorted(get_array_as_list(array_variable_address, array_size))
+    q1_index = int((len(sorted_array) - 1) * 0.25)
+    q3_index = int((len(sorted_array) - 1) * 0.75)
+    q1 = sorted_array[q1_index]
+    q3 = sorted_array[q3_index]
+    iqr = q3 - q1
+    save_pointer_value(save_address_pointer_value, iqr)
+
 def create_random(lower_limit, upper_limit, save_address_pointer_value):
     save_pointer_value(save_address_pointer_value, random.randint(lower_limit, upper_limit))
 
-def calculate_corr_value(array_size, array_variable_address, save_address_pointer_value):
-    pass
+def calculate_correlation(x_array_variable_address, y_array_variable_address, array_size):
+    x_data = get_array_as_list(x_array_variable_address, array_size)
+    y_data = get_array_as_list(y_array_variable_address, array_size)
+    correlation_coef, p_value = stats.pearsonr(x_data, y_data)
+    print("Correlation Coefficient:", correlation_coef)
+    print("P-value:", p_value)
 
 
+def calculate_linear_regression(x_array_variable_address, y_array_variable_address, array_size):
+    x_data = get_array_as_list(x_array_variable_address, array_size)
+    y_data = get_array_as_list(y_array_variable_address, array_size)
+    slope, intercept, r_value, p_value, std_err = stats.linregress(x_data, y_data)
+    print("Slope:", slope)
+    print("Intercept:", intercept)
+    print("R-value:", r_value)
+    print("P-value:", p_value)
+    print("Standard Error:", std_err)
+
+def find_union(array_1_address, array_2_address, array_size):
+    array_1 = get_array_as_list(array_1_address, array_size)
+    array_2 = get_array_as_list(array_2_address, array_size)
+    print(list(set(array_1) | set(array_2)))
+
+def find_difference(array_1_address, array_2_address, array_size):
+    array_1 = get_array_as_list(array_1_address, array_size)
+    array_2 = get_array_as_list(array_2_address, array_size)
+    print(list(set(array_1) - set(array_2)))
+
+def find_intersection(array_1_address, array_2_address, array_size):
+    array_1 = get_array_as_list(array_1_address, array_size)
+    array_2 = get_array_as_list(array_2_address, array_size)
+    print(list(set(array_1) & set(array_2)))
+
+def create_hist_plot(array_variable_address, array_size):
+    sns.histplot(get_array_as_list(array_variable_address, array_size))
+    plt.show()
+
+def create_box_plot(array_variable_address, array_size):
+    sns.boxplot(get_array_as_list(array_variable_address, array_size))
+    plt.show()
+
+def create_scatter_plot(x_array_variable_address, y_array_variable_address, array_size):
+    x_data = get_array_as_list(x_array_variable_address, array_size)
+    y_data = get_array_as_list(y_array_variable_address, array_size)
+    sns.scatterplot(x=x_data, y=y_data)
+    plt.show()
+
+def create_line_plot(x_array_variable_address, y_array_variable_address, array_size):
+    x_data = get_array_as_list(x_array_variable_address, array_size)
+    y_data = get_array_as_list(y_array_variable_address, array_size)
+    sns.lineplot(x=x_data, y=y_data)
+    plt.show()
+
+def create_bar_plot(x_array_variable_address, y_array_variable_address, array_size):
+    x_data = get_array_as_list(x_array_variable_address, array_size)
+    y_data = get_array_as_list(y_array_variable_address, array_size)
+    sns.barplot(x=x_data, y=y_data)
+    plt.show()
 
 ##### PRINTING #####
 
@@ -230,9 +309,6 @@ def print_value(value, multiple = False):
     # else:
     #     sys.stdout.write(str(value_to_print))
 
-def print_end():
-    print()
-
 # Print Global Memory
 def print_global_mem():
     for index, (address, value) in enumerate(global_mem.items()):
@@ -251,7 +327,10 @@ def check_quadruples():
         1: operator.add, 2: operator.sub, 3: operator.truediv, 4: operator.mul, 5: operator.lt,
         6: operator.le, 7: operator.gt, 8: operator.ge, 9: operator.eq, 10: operator.ne,
         11: operator.and_, 12: operator.or_, 30: calculate_mean, 31: calculate_median, 32: calculate_variance_value,
-        35: calculate_std_value, 36: create_random
+        33: calculate_iqr_value,
+        35: calculate_std_value, 36: create_random, 37: calculate_sum_value, 38: calculate_count_value,
+        34: calculate_correlation, 39: calculate_linear_regression, 40: find_union, 41: find_difference, 42: find_intersection,
+        43: create_hist_plot, 44: create_box_plot, 45: create_scatter_plot, 46: create_line_plot, 47: create_bar_plot
     }
     
     while is_executing:
@@ -306,14 +385,14 @@ def check_quadruples():
             case 17:
                 print_value(result, multiple=True)
                 update_instruction_pointer()
-            case 18:
-                # print_end()
-                update_instruction_pointer()
             case 15:
                 save_pointer_value_on_input(result, right_oper)
                 update_instruction_pointer()
-            case 30 | 31 | 32 | 35 | 36:
+            case 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 | 41 | 42 | 45 | 46 | 47:
                 op_dict[operation](left_oper,right_oper,result)
+                update_instruction_pointer()
+            case 43 | 44:
+                op_dict[operation](left_oper, result)
                 update_instruction_pointer()
             case _:
                 instruction_pointer +=1
