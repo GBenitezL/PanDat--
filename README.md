@@ -22,3 +22,6 @@ Diseñé el mapa de memoria. El diseño es muy simple; se guardan en un dicciona
 
 ## Avance #7
 Por cuestiones de tiempo, decidí implementar arreglos de una dimensión únicamente (que pueden llegar a cambiar, dependiendo del tiempo). Se usa la variable global "is_array" para asignarle a cada variable un booleano que indica si es un arreglo, y esta información se almacena en el directorio de la variable. Modifiqué la gramática para agregar nuevas funciones estadísticas, las cuales están pensadas para arreglos de una dimensión.
+
+## Avance #8
+Agregué todas las funciones de la máquina virtual, incluyendo las funciones estadísticas. La máquina virtual cuenta con un stack de memorias para manejar las llamadas de las funciones. Se crea una "memoria" (que es en realidad un diccionario) cada vez que se llama a una función, y de esta manera no mezclar contextos. En ejecución, se leen cada uno de los cuádruplos, y se realizan acciones según sus códigos de operaciones.
