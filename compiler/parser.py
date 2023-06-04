@@ -611,7 +611,6 @@ class ParserClass(Parser):
         right_type = types_stack.pop()
         left_oper = operands_stack.pop()
         left_type = types_stack.pop()
-        print(f"for loop: {operator}, {right_oper}, {left_oper}")
         if right_type == 'int' and left_type == 'int':
             set_quad(operator, right_oper, -1, left_oper)
             jumps_stack.append(len(quadruples))
@@ -847,7 +846,6 @@ class ParserClass(Parser):
         lower_limit = constants_table[0]
         upper_limit = constants_table[get_variable_directory(array_ID)['array_size']]
 
-        print(f'verify {value_to_access, lower_limit, upper_limit}')
         if accessing_array_type == 'int':
             set_quad('VERIFY', value_to_access, lower_limit, upper_limit)
         else:

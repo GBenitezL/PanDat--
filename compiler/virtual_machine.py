@@ -10,40 +10,42 @@ from collections import deque
 from compiler.parser import scopes, quadruples, constants_table
 from compiler.utils import print_error, data_type_values
 
-mem_size = 10000
-is_executing = True
-global_mem = {}
-current_mem = None
-mem_stack = deque()
-instruction_pointer = 0
-instruction_pointer_stack = deque()
-params_queue = deque()
-func_call_IDs = deque()
+##### GLobal Variables #####
+
+memory_size = 10000 # Se tiene un tamaño predeterminado de memoria. La ejecución falla si supera este tamaño
+is_executing = True # Variable de control para decidir cuándo dejar de ejecutar el programa.
+global_memory = {} # Diccionario donde se almacenan todos los valores de variables
+current_memory = None # Diccionario que se inicializa cuando se llama a main o a una función
+memory_stack = deque() # Variable de control para manejar contextos
+instruction_pointer = 0 # Variable para llevar un seguimiento de los cuádruplos
+instruction_pointer_stack = deque() # Se utiliza para llevar control de distintos contextos
+parameters_queue = deque() # Se utiliza para guardar los pointers que se reciben en las llamadas a PARAM
+func_call_IDs = deque() # Se usa para mantener un orden de las llamadas a las funciones
 
 
-##### MEMORY #####
+##### Memory #####
 
-def start_global_mem():
-    global constants_table, global_mem, mem_size
-
-    global_mem = {value: constant for index, (constant, value) in enumerate(constants_table.items())}
+# Inicializa la memoria global, incluyendo todas las constantes de la tabla de constantes
+# Verifica que la máquina virtual cuente con suficiente espacio para la memoria global
+def start_global_memory():
+    global constants_table, global_memory, memory_size
+    global_memory = {value: constant for index, (constant, value) in enumerate(constants_table.items())}
     global_size = len(constants_table) + scopes.get_size('program')
-    
     check_mem(global_size)
     
 
+# Inicializa la memoria main y cambia el contexto de ejecución
 def start_main_mem():
-    global current_mem, mem_stack
-
+    global current_memory, memory_stack
     check_mem(scopes.get_size('main'))
-    current_mem = {}
+    current_memory = {}
 
+# Función utilizada para verificar el tamaño de memoria
 def check_mem(required_size):
-    global mem_size
-
-    if mem_size < required_size:
+    global memory_size
+    if memory_size < required_size:
         print_error('Insufficient Memory', 'EE-01')
-    mem_size -= required_size
+    memory_size -= required_size
 
 
 def save_mem_for_function(function_ID):
@@ -53,7 +55,7 @@ def save_mem_for_function(function_ID):
         print_error(f'Function {function_ID} is yet to be defined', 'EE-02')
     
 
-##### POINTERS #####
+##### Pointers #####
 
 def arithmetic_operation(left_oper, right_oper, save_address, operation):
     save_pointer_value(save_address, operation(get_pointer_value(left_oper), get_pointer_value(right_oper)))
@@ -70,9 +72,9 @@ def get_pointer_value(address):
 
 def save_pointer_value(address, value):
     if int(address / 10000) == 1:
-        global_mem[address] = value
+        global_memory[address] = value
     else:
-        current_mem[address] = value
+        current_memory[address] = value
 
 
 def update_instruction_pointer(new_pos=None):
@@ -87,7 +89,7 @@ def update_instruction_pointer(new_pos=None):
 
 
 def find_address(pointer):
-    value = current_mem.get(pointer) if pointer in current_mem else global_mem.get(pointer) 
+    value = current_memory.get(pointer) if pointer in current_memory else global_memory.get(pointer) 
     if value is None:
         print_error(f'Cannot locate value. Pointer {pointer} has not been assigned yet', 'EE-04')
 
@@ -95,7 +97,7 @@ def find_address(pointer):
     return value
 
 def find_address_no_error(pointer):
-    value = current_mem.get(pointer) if pointer in current_mem else global_mem.get(pointer) 
+    value = current_memory.get(pointer) if pointer in current_memory else global_memory.get(pointer) 
     value = True if value == 'true' else False if value == 'false' else value
     return value
 
@@ -128,35 +130,38 @@ def save_pointer_value_on_input(save_address, type_to_read):
     save_pointer_value(save_address, input_value)
 
 
-##### FUNCTIONS #####
+##### Functions #####
 
 def go_to_function(function_ID, new_instruction_pointer):
-    global mem_stack, instruction_pointer_stack, scopes, instruction_pointer, current_mem, func_call_IDs, params_queue
+    global memory_stack, instruction_pointer_stack, scopes, instruction_pointer, current_memory, func_call_IDs, parameters_queue
 
     parameter_IDs = scopes.get_parameter_IDs(function_ID)
-    new_current_mem = {get_func_local_address(function_ID, parameter_ID): get_pointer_value(params_queue.popleft()) for parameter_ID in parameter_IDs}
-    
+    new_current_memory = {}
+    for parameter_ID in parameter_IDs:
+        func_local_address = get_func_local_address(function_ID, parameter_ID)
+        pointer_value = get_pointer_value(parameters_queue.popleft())
+        new_current_memory[func_local_address] = pointer_value
+
     instruction_pointer_stack.append(instruction_pointer + 1)
     update_instruction_pointer(new_instruction_pointer)
-    mem_stack.append(current_mem)
-    current_mem = new_current_mem
+    memory_stack.append(current_memory)
+    current_memory = new_current_memory
     func_call_IDs.append(function_ID)
 
 def on_function_end():
-    global func_call_IDs, scopes, instruction_pointer_stack, current_mem, mem_stack, mem_size
-
+    global func_call_IDs, scopes, instruction_pointer_stack, current_memory, memory_stack, memory_size
     function_ID = func_call_IDs.pop()
     func_return_type = scopes.get_return_type(function_ID)
     
     if func_return_type != 'void':
         print_error(f'Function {function_ID} requires a return value of type {func_return_type}', 'EE-08')
         
-    current_mem = mem_stack.pop()
+    current_memory = memory_stack.pop()
     update_instruction_pointer(instruction_pointer_stack.pop())
-    mem_size += scopes.get_size(function_ID)
+    memory_size += scopes.get_size(function_ID)
 
 def on_function_end_with_return(return_value_address):
-    global func_call_IDs, scopes, instruction_pointer_stack, current_mem, mem_stack, mem_size
+    global func_call_IDs, scopes, instruction_pointer_stack, current_memory, memory_stack, memory_size
 
     function_ID = func_call_IDs.pop()
     func_return_type = scopes.get_return_type(function_ID)
@@ -165,12 +170,12 @@ def on_function_end_with_return(return_value_address):
         print_error(f'Function {function_ID} requires a return value of type {func_return_type}', 'EE-08')
         
     save_pointer_value(get_func_global_address(function_ID), get_pointer_value(return_value_address))
-    current_mem = mem_stack.pop()
+    current_memory = memory_stack.pop()
     update_instruction_pointer(instruction_pointer_stack.pop())
-    mem_size += scopes.get_size(function_ID)
+    memory_size += scopes.get_size(function_ID)
     
 def add_parameter_for_function_call(value_address):
-    params_queue.append(value_address)
+    parameters_queue.append(value_address)
     
 def get_func_global_address(function_ID):
     return scopes.get_variables_table('program').get_one(function_ID).get('address')
@@ -179,7 +184,7 @@ def get_func_local_address(scope_ID, variable_ID):
     return scopes.get_variables_table(scope_ID).get_one(variable_ID).get('address')
 
 
-##### ARRAYS #####
+##### Arrays #####
 
 def verify_array_access(access_value, array_inferior_limit, array_upp_limit):
     value = get_pointer_value(access_value)
@@ -196,7 +201,7 @@ def get_array_as_list_with_none(starting_address, array_size):
     return [find_address_no_error(starting_address + x) for x in range(array_size)]
 
 
-##### STATISTICS #####
+##### Statistics #####
 
 def calculate_mean(array_size, array_variable_address, save_address_pointer_value):
     save_pointer_value(save_address_pointer_value, sum(find_address(array_variable_address + x) for x in range(array_size)) / array_size)
@@ -294,7 +299,7 @@ def create_bar_plot(x_array_variable_address, y_array_variable_address, array_si
     sns.barplot(x=x_data, y=y_data)
     plt.show()
 
-##### PRINTING #####
+##### Printing #####
 
 def print_value(value, multiple = False):
     is_address = type(value) is int
@@ -313,13 +318,13 @@ def print_value(value, multiple = False):
     #     sys.stdout.write(str(value_to_print))
 
 # Print Global Memory
-def print_global_mem():
-    for index, (address, value) in enumerate(global_mem.items()):
+def print_global_memory():
+    for index, (address, value) in enumerate(global_memory.items()):
         print(f'{index} \t\t {value} \t\t {address}')
 
 # Print Current_Memory
 def print_current_mem():
-    for index, (address, value) in enumerate(current_mem.items()):
+    for index, (address, value) in enumerate(current_memory.items()):
         print(f'{index} \t\t {value} \t\t {address}')
 
 
@@ -404,11 +409,11 @@ def check_quadruples():
 
 
 def start_vm():
-    start_global_mem()
+    start_global_memory()
     start_main_mem()
     print('\nStarting Program Execution\n')
     check_quadruples()
     # print('Global Memory')
-    # print_global_mem()
+    # print_global_memory()
     # print('Last Memory')
     # print_current_mem()
