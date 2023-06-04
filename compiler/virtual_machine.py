@@ -100,27 +100,30 @@ def find_address_no_error(pointer):
     return value
 
 def save_pointer_value_on_input(save_address, type_to_read):
+    type_casting = {
+        1: int,
+        2: float,
+        3: str,
+        4: lambda x: True if x == 'true' else False if x == 'false' else None,
+    }
+
     input_value = input()
-    
+
     try:
-        if type_to_read == 1:
-            input_value = int(input_value)
-        elif type_to_read == 2:
-            input_value = float(input_value)
-        elif type_to_read == 3:
-            input_value = str(input_value)
-            if len(input_value) > 1:
-                print_error(f'char should have a length of 1', 'EE-05')
-        elif type_to_read == 4:
-            if input_value == 'true':
-                input_value = True
-            elif input_value == 'false':
-                input_value = False
-            else:
+        if type_to_read in type_casting:
+            new_value = type_casting[type_to_read](input_value)
+            if new_value is None and type_to_read == 4:
                 print_error(f'bool should have a value of either true or false', 'EE-06')
+            elif type_to_read == 3 and len(input_value) > 1:
+                print_error(f'char should have a length of 1', 'EE-05')
+            else:
+                input_value = new_value
+        else:
+            print_error(f'Expected a value of type {data_type_values[type_to_read]}', 'EE-07')
+
     except:
         print_error(f'Expected a value of type {data_type_values[type_to_read]}', 'EE-07')
-    
+
     save_address = save_address if str(save_address)[0] != '5' else find_address(save_address)
     save_pointer_value(save_address, input_value)
 
@@ -407,5 +410,5 @@ def start_vm():
     check_quadruples()
     # print('Global Memory')
     # print_global_mem()
-    # print('Last Memory')f
+    # print('Last Memory')
     # print_current_mem()

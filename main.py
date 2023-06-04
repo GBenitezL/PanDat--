@@ -21,28 +21,14 @@ def print_constants():
     for index, const in enumerate(constants_table):
         print(index, '\t\t', const, '\t\t', constants_table[const])
 
-# if __name__ == '__main__':
-#     if len(sys.argv) > 1:
-#         file = sys.argv[1]
-#         try:
-#             with open(file, 'r') as f:
-#                 data = f.read()
-#             if (parser.parse(lexer.tokenize(data))) == 'ok':
-#                 print("Parsed Successfully")
-#         except EOFError:
-#             print("Error: end of file reached unexpectedly")
-#         finally:
-#             f.close()
-#     else:
-#         print("No file was found")
 
 def main(argv):
     if len(argv) != 2:
         sys.exit("To run a program, type the following command structure: python main.py file_name.pdat")
     file = argv[1]
 
-    # if str(file)[-4:] != ".pdat":
-    #     sys.exit("Only files with extension \".pdat\" can be executed")
+    if str(file)[-5:] != ".pdat":
+        sys.exit("Only files with extension \".pdat\" can be executed")
 
     if len(sys.argv) > 1:
         file = sys.argv[1]
@@ -52,7 +38,7 @@ def main(argv):
             if (parser.parse(lexer.tokenize(data))) == 'ok':
                 print("Parsed Successfully")
         except EOFError:
-            print("Error: end of file reached unexpectedly")
+            print("Error: Reached end of file reached unexpectedly")
         finally:
             f.close()
     else:

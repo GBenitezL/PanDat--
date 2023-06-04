@@ -8,6 +8,8 @@ from compiler.utils import data_type_IDs, operator_IDs, print_error
 from collections import deque
 from sly import Parser
 
+###### Parser #####
+
 class ParserClass(Parser):
     tokens = LexerClass.tokens
 
@@ -126,8 +128,8 @@ class ParserClass(Parser):
     def statements_2(self, p):
         return p[0]
 
-    @_('ID np_add_id EQUALS np_add_operator expression np_quad_expression SEMI',
-       'ID np_add_id LBRACKET np_check_is_array expression np_verify_array_dim RBRACKET np_get_array_address EQUALS np_add_operator expression np_quad_expression SEMI')
+    @_('ID np_add_id EQUALS np_add_operator expression np_quad_assignment SEMI',
+       'ID np_add_id LBRACKET np_check_is_array expression np_verify_value_in_array_limits RBRACKET np_get_array_address EQUALS np_add_operator expression np_quad_assignment SEMI')
     def assignment(self, p):
         pass
 
@@ -177,7 +179,7 @@ class ParserClass(Parser):
         pass
 
     @_('LPAREN np_open_parenthesis expression RPAREN np_close_parenthesis',
-       'ID np_add_id LBRACKET np_check_is_array expression np_verify_array_dim RBRACKET np_get_array_address',
+       'ID np_add_id LBRACKET np_check_is_array expression np_verify_value_in_array_limits RBRACKET np_get_array_address',
        'function_call_return',
        'factor_2',
        'statistics')
@@ -204,11 +206,11 @@ class ParserClass(Parser):
     def loop(self, p):
         pass
 
-    @_('WHILE np_while_start LPAREN expression RPAREN np_while_expression block np_while_end')
+    @_('WHILE np_while_start LPAREN expression RPAREN np_while_condition block np_while_end')
     def while_loop(self, p):
         pass
 
-    @_('FOR LPAREN ID np_add_id EQUALS np_add_operator expression np_for_expression SEMI expression np_for_limit SEMI expression RPAREN block np_for_end')
+    @_('FOR LPAREN ID np_add_id EQUALS np_add_operator expression np_for_set_iterable SEMI expression np_for_limit SEMI expression RPAREN block np_for_end')
     def for_loop(self, p):
         pass
 
@@ -235,7 +237,7 @@ class ParserClass(Parser):
         pass
 
     @_('ID np_add_id',
-       'ID np_add_id LBRACKET np_check_is_array expression np_verify_array_dim np_get_array_address')
+       'ID np_add_id LBRACKET np_check_is_array expression np_verify_value_in_array_limits np_get_array_address')
     def read_2(self, p):
         pass
     
@@ -338,24 +340,30 @@ class ParserClass(Parser):
         return None
     
 
-    # Neuralgic Points
+    ##### Neuralgic Points #####
 
-    # Scopes
+    ##### Scopes #####
 
+    # Se crea un scope global de tipo void con id "program", y se genera el cuádruplo GOTO para el main
     @_(' ')
     def np_create_global_scope(self, p):
         global scopes, current_scope, jumps_stack
         create_scope('program', 'void')
         set_quad('GOTO', -1, -1, -1)
-        jumps_stack.append(len(quadruples) - 1)
+        goto_jump = len(quadruples) - 1
+        jumps_stack.append(goto_jump)
         create_constant_int_address(0)
 
+    # Se crea un scope "main" de tipo void y se llena el cuádruplo de GOTO main
     @_(' ')
     def np_create_main_scope(self, p):
         global jumps_stack
         create_scope('main', 'void')
-        quadruples[jumps_stack.pop()].set_result(len(quadruples))
+        main_quad = jumps_stack.pop()
+        quadruples[main_quad].set_result(len(quadruples))
 
+    # Se crea un scope nuevo con su ID y tipo de retorno. Se crea una variable global 
+    # con su mismo ID y tipo de retorno, a menos de que sea void
     @_(' ')
     def np_create_new_scope(self, p):
         global scopes
@@ -368,24 +376,30 @@ class ParserClass(Parser):
             global_scope_variables.set_variable_address(function_ID, get_new_address(return_type, False, 1, 'program'))
             global_scope_variables.set_array_values(function_ID, is_array, array_size)
     
+    # Calcula y asigna las memorias de los scope "main" y "program" (global)
     @_(' ')
     def np_end_main(self, p):
         global scopes, current_scope
         scopes.set_size(current_scope)
         scopes.set_size('program')
 
+    # Se genera un cuádruplo END para indicarle a la máquina virtual que termine la ejecución
     @_(' ')
     def np_end_program(self, p):
         set_quad('END', -1, -1, -1)
 
     
-    # Variables
+    ##### Variables #####
 
+    # Agrega las variables a su pila. Se usa para declarar múltiples variables en una sola línea.
     @_(' ')
     def np_append_variables(self, p):
         global variables_stack
         variables_stack.append(p[-1])
 
+    # Se sacan todas las variables de la pila y se generan sus direcciones para cada una.
+    # Se usa la variable global is_array para asignar si son arreglos 
+    # Se asigna 1 como espacio de memoria, a menos de que sean arreglos, entonces se les asigna su tamaño
     @_(' ')
     def np_add_variables(self, p):
         global scopes, current_scope, is_array, array_size, variables_stack
@@ -400,53 +414,66 @@ class ParserClass(Parser):
             current_scope_variables.set_array_values(variable_ID, is_array, array_size)
             variables_stack.popleft()
 
+    # Verifica que el ID existe. Se agrega su dirección y tipo a las pilas correspondientes.
     @_(' ')
     def np_add_id(self, p):
         global operands_stack, types_stack
         variable_ID = p[-1]
-        current_var = get_variable_directory(variable_ID)
-        # scopes.print_directory()
-        operands_stack.append(current_var['address'])
-        types_stack.append(current_var['type'])
+        current_variable = get_variable_directory(variable_ID)
+        operands_stack.append(current_variable['address'])
+        types_stack.append(current_variable['type'])
 
-
+    # Si el entero no existe en la tabla de constantes, lo agrega y le asigna una memoria.
+    # Agrega su dirección y tipo a las pilas correspondientes.
     @_(' ')
     def np_add_int(self, p):
         global operands_stack, types_stack, memory, constants_table
-        if p[-1] not in constants_table:
-            constants_table[p[-1]] = memory.counters['const']['int']
+        constant_int = p[-1]
+        if constant_int not in constants_table:
+            constants_table[constant_int] = memory.counters['const']['int']
             memory.set_count('const', 'int')
-        operands_stack.append(constants_table[p[-1]])
+        operands_stack.append(constants_table[constant_int])
         types_stack.append('int')
     
 
+    # Si el flotante no existe en la tabla de constantes, lo agrega y le asigna una memoria.
+    # Agrega su dirección y tipo a las pilas correspondientes.
     @_(' ')
     def np_add_float(self, p):
         global operands_stack, types_stack, memory, constants_table
-        if p[-1] not in constants_table:
-            constants_table[p[-1]] = memory.counters['const']['float']
+        constant_float = p[-1]
+        if constant_float not in constants_table:
+            constants_table[constant_float] = memory.counters['const']['float']
             memory.set_count('const', 'float')
-        operands_stack.append(constants_table[p[-1]])
+        operands_stack.append(constants_table[constant_float])
         types_stack.append('float')
 
+    # Si el caracter no existe en la tabla de constantes, lo agrega y le asigna una memoria.
+    # Agrega su dirección y tipo a las pilas correspondientes.
     @_(' ')
     def np_add_char(self, p):
         global operands_stack, types_stack, memory, constants_table
-        if p[-1] not in constants_table:
+        constant_char = p[-1]
+        if constant_char not in constants_table:
             constants_table[p[-1]] = memory.counters['const']['char']
             memory.set_count('const', 'char')
-        operands_stack.append(constants_table[p[-1]])
+        operands_stack.append(constants_table[constant_char])
         types_stack.append('char')
 
+    # Si el booleano no existe en la tabla de constantes, lo agrega y le asigna una memoria.
+    # Agrega su dirección y tipo a las pilas correspondientes.
     @_(' ')
     def np_add_bool(self, p):
         global scopes, current_scope, memory, constants_table, operands_stack, types_stack
-        if p[-1] not in constants_table:
-            constants_table[p[-1]] = memory.counters['const']['bool']
+        constant_bool = p[-1]
+        if constant_bool not in constants_table:
+            constants_table[constant_bool] = memory.counters['const']['bool']
             memory.set_count('const', 'bool')
         operands_stack.append(constants_table[p[-1]])
         types_stack.append('bool')
 
+    # Agrega -1 a la tabla de constantes y a la pila de operandos, junto con un operador de multiplicacion
+    # Esto hace que el siguiente valor sea negativo.
     @_(' ')    
     def np_set_as_negative(self, p):
         global memory, constants_table, operands_stack, types_stack, operators_stack
@@ -457,44 +484,53 @@ class ParserClass(Parser):
         types_stack.append('int')
         operators_stack.append('*')
 
-
+    # Agrega el operador a la pila de operadores
     @_(' ')
     def np_add_operator(self, p):
         global operators_stack
         operators_stack.append(p[-1])
 
+    # Agrega un parentésis a la pila de operadores, el cual funciona como un fondo falso
     @_(' ')
     def np_open_parenthesis(self, p):
         global operators_stack
         operators_stack.append(p[-1])
 
+    # Verifica que la pila de operadores contenga un paréntesis, y lo saca.
     @_(' ')
     def np_close_parenthesis(self, p):
         global operators_stack
         if operators_stack[-1] != '(':
-            print_error('Error: \'(\' not found in operators_stack stack ', '')
+            print_error('Error: Unbalanced parenthesis ', '')
         operators_stack.pop()
 
-    # Arithmetics
+    ##### Arithmetics #####
 
+    # Llama a la función create_quad con ['+', '-'], la cual verifica que el cubo semántico permita
+    # la operacion con los tipos, y guarda el resultado en una variable temporal, la cual se agrega
+    # a la pila de operandos junto con su tipo.
     @_(' ')
     def np_quad_plus_minus(self, p):
         create_quad(['+', '-'])
 
+    # Llama a la función create_quad con ['*', '/']
     @_(' ')
     def np_quad_times_div(self, p):
         create_quad(['*', '/'])
 
+    # Llama a la función create_quad con ['<', '<=', '>', '>=', '==', '!=']
     @_(' ')
     def np_quad_comparison(self, p):
         create_quad(['<', '<=', '>', '>=', '==', '!='])
     
+    # Llama a la función create_quad con ['||', '&&']
     @_(' ')
     def np_quad_logical(self, p):
         create_quad(['||', '&&'])
 
+    # Valida que la asignación de variables sea del mismo tipo y genera un cuádruplo de asignación.
     @_(' ')
-    def np_quad_expression(self, p):
+    def np_quad_assignment(self, p):
         global operators_stack, operands_stack, types_stack, quadruples
         operator = operators_stack.pop()
         right_oper = operands_stack.pop()
@@ -503,63 +539,80 @@ class ParserClass(Parser):
         left_type = types_stack.pop()
         res_type = get_type(operator, right_type, left_type)
         if res_type == 'Error':
-            print_error(f'Error: Type mismatch on {right_type}, and {left_type} with a {operator}', '')
+            print_error(f'Error: Type mismatch on "{right_type}", and "{left_type}" with a "{operator}"', '')
         set_quad(operator, right_oper, -1, left_oper)
 
 
-    # Read / Write
+    ##### Read / Write #####
 
+    # Genera un cuádruplo READ indicando la dirección de la variable y su tipo 
     @_(' ')
     def np_quad_read(self, p):
         global operands_stack, types_stack
-        var = operands_stack.pop()
-        set_quad('READ', -1, data_type_IDs[types_stack.pop()], var)
+        variable_to_read = operands_stack.pop()
+        variable_type = types_stack.pop()
+        set_quad('READ', -1, data_type_IDs[variable_type], variable_to_read)
 
+    # Genera un cuádruplo PRINT con el "letrero" a leer
     @_(' ')
     def np_quad_print_str(self, p):
-        set_quad('PRINT', -1, -1, p[-1])
+        string_to_print = p[-1]
+        set_quad('PRINT', -1, -1, string_to_print)
 
+    # Genera un cuádruplo PRINT con el último valor de la pila de operandos
     @_(' ')
     def np_quad_print_exp(self, p):
         global operands_stack, types_stack
+        value_to_print = operands_stack.pop()
         types_stack.pop()
-        set_quad('PRINT', -1, -1, operands_stack.pop())
+        set_quad('PRINT', -1, -1, value_to_print)
 
 
-    # Non-Linear Statements
+    ##### Non-Linear Statements #####
 
+    # Verifica que la condición sea de tipo booleana, y genera un cuádruplo GOTOF con la condición a evaluar
+    # Agrega el salto al cuádruplo anterior a la pila de saltos.
     @_(' ')
     def np_if_gotof(self, p):
         global operands_stack, types_stack, quadruples, jumps_stack
-        res_if_type = types_stack.pop()
-        if res_if_type == 'bool':
-            set_quad('GOTOF', operands_stack.pop(), -1, -1)
-            jumps_stack.append(len(quadruples) - 1)
+        condition_variable_type = types_stack.pop()
+        if condition_variable_type == 'bool':
+            condition_value = operands_stack.pop()
+            set_quad('GOTOF', condition_value, -1, -1)
+            gotof_jump = len(quadruples) - 1
+            jumps_stack.append(gotof_jump)
         else:
             print_error(f'Conditional statement must be of type bool', '')
     
+    # Se llena el cuádruplo del GOTOF con el valor del cuádruplo actual
     @_(' ')
     def np_if_end_gotof(self, p):
         global jumps_stack, quadruples
-        old_quad = quadruples[jumps_stack.pop()]
-        old_quad.set_result(len(quadruples))
+        quad_to_fill = quadruples[jumps_stack.pop()]
+        quad_to_fill.set_result(len(quadruples))
 
+    # Se genera un cuádruplo GOTO
+    # Se llena el cuádruplo donde se inicia la condición actual
     @_(' ')
     def np_else_goto(self, p):
         set_quad('GOTO', -1, -1, -1)
-        old_quad = quadruples[jumps_stack.pop()]
-        jumps_stack.append(len(quadruples) - 1)
-        old_quad.set_result(len(quadruples))
+        quad_to_fill = quadruples[jumps_stack.pop()]
+        goto_jump = len(quadruples) - 1
+        jumps_stack.append(goto_jump)
+        quad_to_fill.set_result(len(quadruples))
 
+    # Se valida que la variable iterable y el valor inicial sean de tipo entero.
+    # Se asigna el valor inicial y se introduce la posición actual a la pila de saltos.
     @_(' ')
-    def np_for_expression(self, p):
+    def np_for_set_iterable(self, p):
         global operators_stack, operands_stack, types_stack, quadruples, jumps_stack
         operator = operators_stack.pop()
         right_oper = operands_stack.pop()
         right_type = types_stack.pop()
         left_oper = operands_stack.pop()
         left_type = types_stack.pop()
-        if right_type == 'int' and left_type == 'int' :
+        print(f"for loop: {operator}, {right_oper}, {left_oper}")
+        if right_type == 'int' and left_type == 'int':
             set_quad(operator, right_oper, -1, left_oper)
             jumps_stack.append(len(quadruples))
             operands_stack.append(left_oper)
@@ -567,6 +620,8 @@ class ParserClass(Parser):
         else:
             print_error(f'For loop requires limits of type int', '')
     
+    # Se valida que la condición del for sea tipo booleana.
+    # Se genera un cuádruplo GOTOV que se utiliza para cerrar el for, y se añade su posición a la pila de saltos.
     @_(' ')
     def np_for_limit(self, p):
         global operands_stack, types_stack, quadruples, jumps_stack
@@ -579,62 +634,76 @@ class ParserClass(Parser):
         else:
             print_error(f'For loop requires condition of type bool', '')
 
+    # Verificq que el valor del incremento sea de tipo entero
+    # Genera un cuádruplo para sumar la variable iterable con el incremento.
+    # Genera un cuádruplo GOTO hacia la posición inicial del for
+    # Actualiza el cuádruplo del GOTO anterior con la posición final del for.
     @_(' ')
     def np_for_end(self, p):
         global operands_stack, types_stack, quadruples
-        for_length = operands_stack.pop()
+        for_step = operands_stack.pop()
         if types_stack.pop() == 'int':
-            for_value = operands_stack.pop()
+            for_variable_value = operands_stack.pop()
             for_variable_type = types_stack.pop()
         else:
             print_error('Value for For loop update variable should be int', '')
         
         if get_type('+', for_variable_type, 'int') == 'int':
-            set_quad('+', for_value, for_length, for_value)
-            end_pos = jumps_stack.pop()
-            set_quad('GOTO', -1, -1, jumps_stack.pop())
-            quadruples[end_pos].set_result(len(quadruples))
+            set_quad('+', for_variable_value, for_step, for_variable_value)
+            end_position = jumps_stack.pop()
+            return_position = jumps_stack.pop()
+            set_quad('GOTO', -1, -1, return_position)
+            quadruples[end_position].set_result(len(quadruples))
         else:
             print_error(f'Cannot perform operation + to {for_variable_type} and int', '')
 
 
+    # Se agrega la posición actual a la pila de saltos para poder regresar
     @_(' ')
     def np_while_start (self, p):
         jumps_stack.append(len(quadruples))
 
+    # Se verifica que la expresión sea booleana y se genera un cuádruplo GOTOF con la condición a evaluar
     @_(' ')
-    def np_while_expression (self, p):
-        exp_type = types_stack.pop()
-        if exp_type == 'bool': 
-            set_quad('GOTOF', operands_stack.pop(), -1, -1)
+    def np_while_condition (self, p):
+        condition_type = types_stack.pop()
+        condition_value = operands_stack.pop()
+        if condition_type == 'bool': 
+            set_quad('GOTOF', condition_value, -1, -1)
             jumps_stack.append(len(quadruples) - 1)
         else:
             print_error(f'Conditional statement must be of type bool', '')
 
+    # Se agrega un GOTO al inicio del while para que regrese y evalúe la condición hasta que sea falsa
+    # Se actualiza el GOTO del while para indicar la posición en la cual termina
     @_(' ')
     def np_while_end (self, p):
-        end_pos = jumps_stack.pop()
+        end_position = jumps_stack.pop()
         set_quad('GOTO', -1, -1, jumps_stack.pop())
-        quadruples[end_pos].set_result(len(quadruples))
+        quadruples[end_position].set_result(len(quadruples))
 
 
-    # Modules
+    ##### Modules #####
     
+    # Se guarda la posición donde inicia la función en el directorio de funciones
     @_(' ')
     def np_function_start(self, p):
         global scopes, current_scope, quadruples
         scopes.set_quad_count(current_scope, len(quadruples))
 
+    # Agrega el ID del parámetro y su tipo al directorio del scope de la función
     @_(' ')
     def np_add_parameters_type(self, p):
         global scopes, current_scope
         parameter_ID = p[-4]
         parameter_type = p[-2]
         current_scope_parameters = scopes.get_parameters(current_scope)
+        current_scope_parameters.append(parameter_type)
         current_scope_IDs_parameters = scopes.get_parameter_IDs(current_scope)
         current_scope_IDs_parameters.append(parameter_ID)
-        current_scope_parameters.append(parameter_type)
 
+    # Se genera un cuádruplo ENDFUNC y se establece el tamaño de memoria para la función.
+    # Se reinician los contadores de memoria locales y temporales.
     @_(' ')
     def np_function_end(self, p):
         global scopes, current_scope, memory
@@ -643,6 +712,8 @@ class ParserClass(Parser):
         memory.reset_local_counters()
         memory.reset_temp_counters()
 
+    # Verifica que el nombre de la función exista en el directorio de scopes.
+    # Se genera un cuádruplo ERA con el id de la función. Este tendrá que ser verificado en ejecución.
     @_(' ')
     def np_check_function_call(self, p):
         global scopes, parameters_stack, current_function_call_ID, function_call_ID_stack, operators_stack
@@ -651,10 +722,13 @@ class ParserClass(Parser):
             parameters_stack.append(0)
             function_call_ID_stack.append(current_function_call_ID)
             set_quad('ERA', -1, -1, current_function_call_ID)
+            # Fondo falso
             operators_stack.append('fb_function')
         else:
             print_error(f'Function {current_function_call_ID} is not defined', '')
 
+    # Valida que el parámetro tenga el mismo tipo que el de la firma de la función
+    # Se crea un cuádruplo PARAM con el valor del parámetro y su número (posición en la firma)
     @_(' ')
     def np_add_function_call_parameters(self, p):
         global types_stack, parameters_stack, function_call_ID_stack, scopes
@@ -664,21 +738,26 @@ class ParserClass(Parser):
         function_call_parameters = scopes.get_parameters(current_function_call_ID)
         
         if(function_call_parameters[parameters_count] == parameter_type):
-            set_quad('PARAM', operands_stack.pop(), -1, f'_param_{parameters_count}')
+            parameter_value = operands_stack.pop()
+            set_quad('PARAM', parameter_value, -1, f'_param_{parameters_count}')
             parameters_count += 1
             parameters_stack.append(parameters_count)
         else:
             print_error(f'The {parameters_count + 1}th argument of function {current_function_call_ID} should be of type {function_call_parameters[parameters_count]}', '')
         
+    # Verifica que la cantidad de parámetros de la llamada sea la misma a la cantidad de parámetros de la firma
+    # Además, genera una nueva variable temporal para almacenar el valor que regresa la función (a menos de que sea tipo void)
+    # Se genera un cuádruplo de asignación para asignar dicho valor y se agrega a la pila de operandos.
     @_(' ')
     def np_function_end_parameters(self, p):
         global parameters_stack, scopes, current_scope, temps_count, function_call_ID_stack, operators_stack
         current_function_call_ID = function_call_ID_stack.pop()
         size_of_parameters = len(scopes.get_parameters(current_function_call_ID))
+        # Fondo falso
         operators_stack.pop()
         if size_of_parameters == parameters_stack.pop():
-            initial_function_addres = scopes.get_quad_count(current_function_call_ID)
-            set_quad('GOSUB', current_function_call_ID, -1, initial_function_addres)
+            initial_function_address = scopes.get_quad_count(current_function_call_ID)
+            set_quad('GOSUB', current_function_call_ID, -1, initial_function_address)
         else:
             print_error(f'Function {current_function_call_ID}, requires {size_of_parameters} arguments', '')
         
@@ -695,6 +774,8 @@ class ParserClass(Parser):
             operands_stack.append(new_address)
             types_stack.append(fun_return_type)
 
+    # Se verifica que el valor a retornar (temporal asignado) sea igual al tipo de la función
+    # Se genera el cuádruplo RETURN con el valor a retornar
     @_(' ')
     def np_set_return_quad(self, p):
         global current_scope, scopes, operands_stack, types_stack
@@ -706,20 +787,24 @@ class ParserClass(Parser):
 
     ##### Arrays #####
 
+    # Se verifica que el arreglo se declare con una constante mayor o igual a 1
+    # Se agrega dicha constante la tabla de constantes
     @_(' ')
     def np_set_as_array(self, p):
         global is_array, array_size
         is_array = True
         array_size = p[-2]
-
         create_constant_int_address(array_size) if array_size >= 1 else print_error('Array size should be greater than 1', '')
 
+    # Restablece las globales is_array y array_size cuando se lee una variable no dimensionada.
     @_(' ')
     def np_not_array(self, p):
         global is_array, array_size
         is_array = False
         array_size = None
 
+    # Se verifica que la dirección esté en el directorio de variables local o global y que sea un arreglo.
+    # Se agrega un fondo falso para permitir casos en el que el valor a asignar sea una expresión con un arreglo
     @_(' ')
     def np_check_is_array(self, p):
         global operands_stack, types_stack, operators_stack
@@ -727,30 +812,34 @@ class ParserClass(Parser):
         types_stack.pop()
         array_ID = p[-3]
 
-        current_var = get_variable_directory(array_ID)
-        if current_var['is_array']:
-            operands_stack.append(current_var['address'])
-            types_stack.append(current_var['type'])
+        current_variable = get_variable_directory(array_ID)
+        if current_variable['is_array']:
+            operands_stack.append(current_variable['address'])
+            types_stack.append(current_variable['type'])
+            # Fondo falso
             operators_stack.append('fb_array')
         else:
             print_error(f'Array {array_ID} is not defined.', '')
         
 
+    # Crea un cuádruplo que suma el valor del arreglo a acceder y la dirección del arreglo
+    # Esto se guarda en una dirección de tipo pointer, y esta se guarda en la pila de operandos.
     @_(' ')
     def np_get_array_address(self, p):
         global operands_stack, types_stack, constants_table
         accessing_array_value = operands_stack.pop()
         types_stack.pop()
-        array_init_address_const_address = create_constant_int_address(operands_stack.pop())
+        constant_initial_array_address = create_constant_int_address(operands_stack.pop())
         pointer_address = create_pointer_address()
-        
-        set_quad('+', accessing_array_value, array_init_address_const_address, pointer_address)
+        set_quad('+', accessing_array_value, constant_initial_array_address, pointer_address)
+        # Pop al fondo falso
         operators_stack.pop()
-
         operands_stack.append(pointer_address)
 
+    # Se genera el cuádruplo VERIFY que se usará para verificar que el valor a acceder se encuentra
+    # dentro de los límites del arreglo. La verificación se hace en ejecución
     @_(' ')
-    def np_verify_array_dim(self, p):
+    def np_verify_value_in_array_limits(self, p):
         global operands_stack, constants_table, types_stack
         accessing_array_type = types_stack[-1]
         array_ID = p[-5]
@@ -758,12 +847,13 @@ class ParserClass(Parser):
         lower_limit = constants_table[0]
         upper_limit = constants_table[get_variable_directory(array_ID)['array_size']]
 
+        print(f'verify {value_to_access, lower_limit, upper_limit}')
         if accessing_array_type == 'int':
             set_quad('VERIFY', value_to_access, lower_limit, upper_limit)
         else:
             print_error(f'Array {array_ID} must be accesed using an int value', '')
 
-
+    # Verifica que ambas variables sean arreglos de tipo enteo o flotante, y que la propiedad array_size sea igual para ambas
     @_(' ')
     def np_verify_same_length(self, p):
         x_array_var = get_variable_directory(p[-4])
@@ -781,6 +871,7 @@ class ParserClass(Parser):
 
     ##### Statistical Functions #####
 
+    # Genera un cuádruplo RAND con los límites de la función y genera una memoria temporal para guardar el resultado.
     @_(' ')
     def np_set_rand_quad(self, p):
         result_address = create_temp_address('int')
@@ -790,6 +881,9 @@ class ParserClass(Parser):
         types_stack.append('int')
         set_quad('RAND', lower_limit, upper_limit, result_address)
 
+    # Llama a la función create_quad_statistics con el ID del arreglo y el tipo de función estadística.
+    # Dicha función verifica que la variable sea un arreglo de tipo entero o flotante
+    # Guarda el resultado en la pila de operandos como flotante
     @_(' ')
     def np_set_statistics_quad(self, p):
         array_ID = p[-2]
@@ -810,6 +904,8 @@ class ParserClass(Parser):
             case 'iqr':
                 create_quad_statistics(array_ID, 'IQR')
 
+    # Genera un cuádruplo con el tipo de función, las direcciones de los arreglos, y su tamaño.
+    # No guarda el resultado en ningún lado, ya que estas funciones únicamente imprimen
     @_(' ')
     def np_set_stat_print_quad(self, p):
         quad_type = p[-6]
@@ -827,12 +923,15 @@ class ParserClass(Parser):
             case 'corr':
                 set_quad('CORR', array_1['address'], array_2['address'], array_1['array_size'])
 
+    # Genera un cuádruplo de tipo CORR, con las direcciones de los arreglos, y su tamaño.
+    # No guarda el resultado en ningún lado, porque esta función únicamente imprime
     @_(' ')
     def np_set_corr_quad(self, p):
         array_1 = get_variable_directory(p[-5])
         array_2 = get_variable_directory(p[-3])
         set_quad('CORR', array_1['address'], array_2['address'], array_1['array_size'])
     
+    # Genera un cuádruplo con el tipo de gráfico, la direccion del arreglo, y su tamaño.
     @_(' ')
     def np_set_one_array_plot(self, p):
         quad_type = p[-4]
@@ -843,6 +942,7 @@ class ParserClass(Parser):
             case 'boxplot':
                 set_quad('BOXPLOT', array['address'], -1, array['array_size'])
 
+    # Genera un cuádruplo con el tipo de gráfico, las direcciones de los arreglos, y su tamaño.
     @_(' ')
     def np_set_two_array_plot(self, p):
         quad_type = p[-7]
@@ -867,7 +967,7 @@ class ParserClass(Parser):
 
 
 
-# Global Variables
+##### Global Variables #####
 
 scopes = ScopesDirectory()
 current_scope = ''
@@ -892,7 +992,7 @@ is_array = False
 array_size = 0
 
 
-# Scopes Functions
+##### Scopes Functions #####
 
 def get_variable_directory(variable_ID):
     global scopes, current_scope
@@ -908,17 +1008,17 @@ def create_scope(scope_id, return_type):
     scopes.add_new_scope(scope_id, return_type, Variables(scope_id))
     current_scope = scope_id
 
-def create_quad(operator_to_check):
+def create_quad(operators_to_check):
     global operands_stack, operators_stack, types_stack, scopes, current_scope, temps_count
-    if len(operators_stack) > 0 and (operators_stack[-1] in operator_to_check):
+    if len(operators_stack) > 0 and operators_stack[-1] in operators_to_check:
         operator = operators_stack.pop()
         right_oper = operands_stack.pop()
         right_type = types_stack.pop()
         left_oper = operands_stack.pop()
         left_type = types_stack.pop()
         res_type = get_type(operator, right_type, left_type)
-        
-        if res_type != 'Error':  
+
+        if res_type != 'Error':
             current_scope_variables = scopes.get_variables_table(current_scope)
             temp_variable_name = "_temp" + f"{temps_count}"
             temps_count += 1
@@ -931,11 +1031,22 @@ def create_quad(operator_to_check):
         else:
             print_error(f'Cannot perform operation {operator} to {left_type} and {right_type}', '')
 
+def create_quad_statistics(array_ID, stat_operator):
+    current_variable = get_variable_directory(array_ID)
+    if (current_variable['is_array']) and (current_variable['type'] in ['int', 'float']):    
+        result_address = create_temp_address('float')
+        operands_stack.append(result_address)
+        types_stack.append('float')
+        set_quad(stat_operator, current_variable['array_size'], current_variable['address'], result_address)
+    else:
+        print_error(f'{stat_operator} function requires an array of floats or integers.', '')
+
+
 def set_quad(oper_ID, left_oper, right_oper, result):
     quadruples.append(Quadruple(operator_IDs[oper_ID] , left_oper, right_oper, result))
 
 
-# Memory Functions
+##### Memory Functions #####
 
 def get_global_types_map(memory):
     global_types_map = {
@@ -980,19 +1091,18 @@ def create_pointer_address():
     memory.set_count('pointer', 'int')
     return new_pointer_address
 
-def create_temp_address(type):
+def create_temp_address(variable_type):
     global scopes, temps_count, current_scope
     current_scope_variables = scopes.get_variables_table(current_scope)
     temp_variable_name = f"_temp{temps_count}"
     temps_count += 1
     current_scope_variables.add_variable(temp_variable_name, 'float')
-    new_address = get_new_address(type, True)
+    new_address = get_new_address(variable_type, True)
     current_scope_variables.set_variable_address(temp_variable_name, new_address)
     return new_address
     
 def get_new_address(variable_type, is_temp = False, space = 1, other_scope = None):
-    global current_scope
-    global memory
+    global current_scope, memory
     if other_scope is not None:
         scope = other_scope
     else:
@@ -1007,14 +1117,3 @@ def get_new_address(variable_type, is_temp = False, space = 1, other_scope = Non
     local_types_map = get_local_types_map(memory)
     memory.set_count('local', variable_type, space)
     return local_types_map[variable_type]
-
-
-def create_quad_statistics(array_ID, stat_operator):
-    current_var = get_variable_directory(array_ID)
-    if (current_var['is_array']) or (current_var['type'] in ['int', 'float']):    
-        result_address = create_temp_address('float')
-        operands_stack.append(result_address)
-        types_stack.append('float')
-        set_quad(stat_operator, current_var['array_size'], current_var['address'], result_address)
-    else:
-        print_error('{stat_operator} function requires an array of floats or integers.', '')

@@ -41,6 +41,6 @@ def get_type(operand, type1, type2):
     result_type = cube.get(operand, {}).get(type1, {}).get(type2)
 
     if result_type is None:
-        print_error(f'Cannot perform operation {operand} to {type1} and {type2}', "EC-01")
+        return 'Error'
     else:
         return result_type
