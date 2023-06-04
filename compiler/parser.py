@@ -36,18 +36,14 @@ class ParserClass(Parser):
     def block(self, p):
         pass
 
-    @_('variables_2')
+    @_('VAR variables_2 variables',
+       'VAR variables_2')
     def variables(self, p):
         pass
 
-    @_('VAR variables_3 variables_2',
-       'VAR variables_3')
-    def variables_2(self, p):
-        pass
-
     @_('ID COLON variable_type np_add_variables SEMI',
-       'ID np_append_variables COMMA variables_3')
-    def variables_3(self, p):
+       'ID np_append_variables COMMA variables_2')
+    def variables_2(self, p):
         pass
 
     @_('INT array',
@@ -633,7 +629,7 @@ class ParserClass(Parser):
         else:
             print_error(f'For loop requires condition of type bool', '')
 
-    # Verificq que el valor del incremento sea de tipo entero
+    # Verifica que el valor del incremento sea de tipo entero
     # Genera un cuádruplo para sumar la variable iterable con el incremento.
     # Genera un cuádruplo GOTO hacia la posición inicial del for
     # Actualiza el cuádruplo del GOTO anterior con la posición final del for.
