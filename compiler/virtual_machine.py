@@ -301,7 +301,7 @@ def create_bar_plot(x_array_variable_address, y_array_variable_address, array_si
 
 ##### Printing #####
 
-def print_value(value, multiple = False):
+def print_value(value):
     is_address = type(value) is int
     if(is_address):
         value_to_print = get_pointer_value(value)
@@ -311,11 +311,7 @@ def print_value(value, multiple = False):
     else:
         value_to_print = value[1:-1]
         sys.stdout.write(str(value_to_print))
-    
-    # if value_to_print == "/n":
-    #     print(value_to_print)
-    # else:
-    #     sys.stdout.write(str(value_to_print))
+
 
 # Print Global Memory
 def print_global_memory():
@@ -389,9 +385,6 @@ def check_quadruples():
                 on_function_end_with_return(result)
             case 16:
                 print_value(result)
-                update_instruction_pointer()
-            case 17:
-                print_value(result, multiple=True)
                 update_instruction_pointer()
             case 15:
                 save_pointer_value_on_input(result, right_oper)

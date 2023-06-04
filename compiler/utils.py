@@ -30,8 +30,7 @@ operator_IDs = {
     '=': 13,
     'RETURN': 14,
     'READ': 15,
-    'PRINT': 16, 
-    'PRINT_MULTIPLE': 17,
+    'PRINT': 16,
     
     'GOTO': 20,
     'GOTOV': 21,
