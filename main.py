@@ -35,8 +35,8 @@ def main(argv):
         try:
             with open(file, 'r') as f:
                 data = f.read()
-            if (parser.parse(lexer.tokenize(data))) == 'ok':
-                print("Parsed Successfully")
+            if (parser.parse(lexer.tokenize(data))) != 'ok':
+                print("Parsed Unsuccessfully")
         except EOFError:
             print("Error: Reached end of file reached unexpectedly")
         finally:

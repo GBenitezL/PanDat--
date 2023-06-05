@@ -12,7 +12,7 @@ from compiler.utils import print_error, data_type_values
 
 ##### GLobal Variables #####
 
-memory_size = 10000 # Se tiene un tamaño predeterminado de memoria. La ejecución falla si supera este tamaño
+memory_size = None
 is_executing = True # Variable de control para decidir cuándo dejar de ejecutar el programa.
 global_memory = {} # Diccionario donde se almacenan todos los valores de variables
 current_memory = None # Diccionario que se inicializa cuando se llama a main o a una función
@@ -20,7 +20,7 @@ memory_stack = deque() # Variable de control para manejar contextos
 instruction_pointer = 0 # Variable para llevar un seguimiento de los cuádruplos
 instruction_pointer_stack = deque() # Se utiliza para llevar control de distintos contextos
 parameters_queue = deque() # Se utiliza para guardar los pointers que se reciben en las llamadas a PARAM
-func_call_IDs = deque() # Se usa para mantener un orden de las llamadas a las funciones
+function_call_IDs = deque() # Se usa para mantener un orden de las llamadas a las funciones
 
 
 ##### Memory #####
@@ -31,38 +31,39 @@ def start_global_memory():
     global constants_table, global_memory, memory_size
     global_memory = {value: constant for index, (constant, value) in enumerate(constants_table.items())}
     global_size = len(constants_table) + scopes.get_size('program')
-    check_mem(global_size)
+    validate_memory_size(global_size)
     
 
 # Inicializa la memoria main y cambia el contexto de ejecución
-def start_main_mem():
+def start_main_memory():
     global current_memory, memory_stack
-    check_mem(scopes.get_size('main'))
+    validate_memory_size(scopes.get_size('main'))
     current_memory = {}
 
 # Función utilizada para verificar el tamaño de memoria
-def check_mem(required_size):
+def validate_memory_size(required_size):
     global memory_size
     if memory_size < required_size:
         print_error('Insufficient Memory', 'EE-01')
     memory_size -= required_size
 
-
-def save_mem_for_function(function_ID):
+# Guarda el tamaño espeicificado en el directorio de la variable
+def save_memory_space_for_function(function_ID):
     if scopes.exists(function_ID):
-        check_mem(scopes.get_size(function_ID))
+        validate_memory_size(scopes.get_size(function_ID))
     else:
         print_error(f'Function {function_ID} is yet to be defined', 'EE-02')
     
 
 ##### Pointers #####
 
+# Guarda en su respectiva memoria el resultado de una operación
 def arithmetic_operation(left_oper, right_oper, save_address, operation):
-    save_pointer_value(save_address, operation(get_pointer_value(left_oper), get_pointer_value(right_oper)))
+    save_pointer_value_in_memory(save_address, operation(get_pointer_value(left_oper), get_pointer_value(right_oper)))
 
-
+# Verifica si el valor es un pointer y lo asigna en su respectiva posicion
 def assign_value(value_address, save_address):
-    save_pointer_value(save_address if str(save_address)[0] != '5' else find_address(save_address), 
+    save_pointer_value_in_memory(save_address if str(save_address)[0] != '5' else find_address(save_address), 
                        get_pointer_value(value_address))
 
 
@@ -70,36 +71,11 @@ def get_pointer_value(address):
     return find_address(address if str(address)[0] != '5' else find_address(address))
 
 
-def save_pointer_value(address, value):
+def save_pointer_value_in_memory(address, value):
     if int(address / 10000) == 1:
         global_memory[address] = value
     else:
         current_memory[address] = value
-
-
-def update_instruction_pointer(new_pos=None):
-    global instruction_pointer
-    
-    new_pos = new_pos if new_pos is not None else instruction_pointer + 1
-    
-    if new_pos > len(quadruples):
-        print_error(f'Cannot locate positon {new_pos}', 'EE-03')
-
-    instruction_pointer = new_pos
-
-
-def find_address(pointer):
-    value = current_memory.get(pointer) if pointer in current_memory else global_memory.get(pointer) 
-    if value is None:
-        print_error(f'Cannot locate value. Pointer {pointer} has not been assigned yet', 'EE-04')
-
-    value = True if value == 'true' else False if value == 'false' else value
-    return value
-
-def find_address_no_error(pointer):
-    value = current_memory.get(pointer) if pointer in current_memory else global_memory.get(pointer) 
-    value = True if value == 'true' else False if value == 'false' else value
-    return value
 
 def save_pointer_value_on_input(save_address, type_to_read):
     type_casting = {
@@ -127,49 +103,75 @@ def save_pointer_value_on_input(save_address, type_to_read):
         print_error(f'Expected a value of type {data_type_values[type_to_read]}', 'EE-07')
 
     save_address = save_address if str(save_address)[0] != '5' else find_address(save_address)
-    save_pointer_value(save_address, input_value)
+    save_pointer_value_in_memory(save_address, input_value)
+
+
+def update_instruction_pointer(new_pos=None):
+    global instruction_pointer
+    
+    new_pos = new_pos if new_pos is not None else instruction_pointer + 1
+    
+    if new_pos > len(quadruples):
+        print_error(f'Cannot locate positon {new_pos}', 'EE-03')
+
+    instruction_pointer = new_pos
+
+
+def find_address(pointer):
+    value = current_memory.get(pointer) if pointer in current_memory else global_memory.get(pointer) 
+    if value is None:
+        print_error(f'Cannot locate value. Pointer {pointer} has not been assigned yet', 'EE-04')
+
+    value = True if value == 'true' else False if value == 'false' else value
+    return value
+
+def find_address_no_error(pointer):
+    value = current_memory.get(pointer) if pointer in current_memory else global_memory.get(pointer) 
+    value = True if value == 'true' else False if value == 'false' else value
+    return value
+
 
 
 ##### Functions #####
 
-def go_to_function(function_ID, new_instruction_pointer):
-    global memory_stack, instruction_pointer_stack, scopes, instruction_pointer, current_memory, func_call_IDs, parameters_queue
+def change_scope_to_function(function_ID, function_instruction_pointer):
+    global memory_stack, instruction_pointer_stack, scopes, instruction_pointer, current_memory, function_call_IDs, parameters_queue
 
     parameter_IDs = scopes.get_parameter_IDs(function_ID)
-    new_current_memory = {}
+    current_function_memory = {}
     for parameter_ID in parameter_IDs:
-        func_local_address = get_func_local_address(function_ID, parameter_ID)
+        function_local_address = get_function_local_address(function_ID, parameter_ID)
         pointer_value = get_pointer_value(parameters_queue.popleft())
-        new_current_memory[func_local_address] = pointer_value
+        current_function_memory[function_local_address] = pointer_value
 
     instruction_pointer_stack.append(instruction_pointer + 1)
-    update_instruction_pointer(new_instruction_pointer)
+    update_instruction_pointer(function_instruction_pointer)
     memory_stack.append(current_memory)
-    current_memory = new_current_memory
-    func_call_IDs.append(function_ID)
+    current_memory = current_function_memory
+    function_call_IDs.append(function_ID)
 
-def on_function_end():
-    global func_call_IDs, scopes, instruction_pointer_stack, current_memory, memory_stack, memory_size
-    function_ID = func_call_IDs.pop()
-    func_return_type = scopes.get_return_type(function_ID)
+def end_function():
+    global function_call_IDs, scopes, instruction_pointer_stack, current_memory, memory_stack, memory_size
+    function_ID = function_call_IDs.pop()
+    function_return_type = scopes.get_return_type(function_ID)
     
-    if func_return_type != 'void':
-        print_error(f'Function {function_ID} requires a return value of type {func_return_type}', 'EE-08')
+    if function_return_type != 'void':
+        print_error(f'Function {function_ID} requires a return value of type {function_return_type}', 'EE-08')
         
     current_memory = memory_stack.pop()
     update_instruction_pointer(instruction_pointer_stack.pop())
     memory_size += scopes.get_size(function_ID)
 
-def on_function_end_with_return(return_value_address):
-    global func_call_IDs, scopes, instruction_pointer_stack, current_memory, memory_stack, memory_size
+def end_function_with_return(return_value_address):
+    global function_call_IDs, scopes, instruction_pointer_stack, current_memory, memory_stack, memory_size
 
-    function_ID = func_call_IDs.pop()
-    func_return_type = scopes.get_return_type(function_ID)
+    function_ID = function_call_IDs.pop()
+    function_return_type = scopes.get_return_type(function_ID)
     
-    if data_type_values[int(str(return_value_address)[1])] != func_return_type:
-        print_error(f'Function {function_ID} requires a return value of type {func_return_type}', 'EE-08')
+    if data_type_values[int(str(return_value_address)[1])] != function_return_type:
+        print_error(f'Function {function_ID} requires a return value of type {function_return_type}', 'EE-08')
         
-    save_pointer_value(get_func_global_address(function_ID), get_pointer_value(return_value_address))
+    save_pointer_value_in_memory(get_function_global_address(function_ID), get_pointer_value(return_value_address))
     current_memory = memory_stack.pop()
     update_instruction_pointer(instruction_pointer_stack.pop())
     memory_size += scopes.get_size(function_ID)
@@ -177,10 +179,10 @@ def on_function_end_with_return(return_value_address):
 def add_parameter_for_function_call(value_address):
     parameters_queue.append(value_address)
     
-def get_func_global_address(function_ID):
+def get_function_global_address(function_ID):
     return scopes.get_variables_table('program').get_one(function_ID).get('address')
 
-def get_func_local_address(scope_ID, variable_ID):
+def get_function_local_address(scope_ID, variable_ID):
     return scopes.get_variables_table(scope_ID).get_one(variable_ID).get('address')
 
 
@@ -204,21 +206,21 @@ def get_array_as_list_with_none(starting_address, array_size):
 ##### Statistics #####
 
 def calculate_mean(array_size, array_variable_address, save_address_pointer_value):
-    save_pointer_value(save_address_pointer_value, sum(find_address(array_variable_address + x) for x in range(array_size)) / array_size)
+    save_pointer_value_in_memory(save_address_pointer_value, sum(find_address(array_variable_address + x) for x in range(array_size)) / array_size)
 
 def calculate_median(array_size, array_variable_address, save_address_pointer_value):
     numbers_list = get_array_as_list(array_variable_address, array_size)
     numbers_list.sort()
-    save_pointer_value(save_address_pointer_value, statistics.median(numbers_list))
+    save_pointer_value_in_memory(save_address_pointer_value, statistics.median(numbers_list))
 
 def calculate_variance_value(array_size, array_variable_address, save_address_pointer_value):
-    save_pointer_value(save_address_pointer_value, statistics.variance(get_array_as_list(array_variable_address, array_size)))
+    save_pointer_value_in_memory(save_address_pointer_value, statistics.variance(get_array_as_list(array_variable_address, array_size)))
 
 def calculate_std_value(array_size, array_variable_address, save_address_pointer_value):
-    save_pointer_value(save_address_pointer_value, statistics.stdev(get_array_as_list(array_variable_address, array_size)))
+    save_pointer_value_in_memory(save_address_pointer_value, statistics.stdev(get_array_as_list(array_variable_address, array_size)))
 
 def calculate_sum_value(array_size, array_variable_address, save_address_pointer_value):
-    save_pointer_value(save_address_pointer_value, sum(get_array_as_list(array_variable_address, array_size)))
+    save_pointer_value_in_memory(save_address_pointer_value, sum(get_array_as_list(array_variable_address, array_size)))
 
 def calculate_count_value(array_size, array_variable_address, save_address_pointer_value):
     array = get_array_as_list_with_none(array_variable_address, array_size)
@@ -226,7 +228,7 @@ def calculate_count_value(array_size, array_variable_address, save_address_point
     for value in array:
         if value != None:
             count += 1
-    save_pointer_value(save_address_pointer_value, count)
+    save_pointer_value_in_memory(save_address_pointer_value, count)
 
 def calculate_iqr_value(array_size, array_variable_address, save_address_pointer_value):
     sorted_array = sorted(get_array_as_list(array_variable_address, array_size))
@@ -235,10 +237,10 @@ def calculate_iqr_value(array_size, array_variable_address, save_address_pointer
     q1 = sorted_array[q1_index]
     q3 = sorted_array[q3_index]
     iqr = q3 - q1
-    save_pointer_value(save_address_pointer_value, iqr)
+    save_pointer_value_in_memory(save_address_pointer_value, iqr)
 
 def create_random(lower_limit, upper_limit, save_address_pointer_value):
-    save_pointer_value(save_address_pointer_value, random.randint(lower_limit, upper_limit))
+    save_pointer_value_in_memory(save_address_pointer_value, random.randint(lower_limit, upper_limit))
 
 def calculate_correlation(x_array_variable_address, y_array_variable_address, array_size):
     x_data = get_array_as_list(x_array_variable_address, array_size)
@@ -319,13 +321,13 @@ def print_global_memory():
         print(f'{index} \t\t {value} \t\t {address}')
 
 # Print Current_Memory
-def print_current_mem():
+def print_current_memory():
     for index, (address, value) in enumerate(current_memory.items()):
         print(f'{index} \t\t {value} \t\t {address}')
 
 
 ##### QUADRUPLES #####
-def check_quadruples():
+def execute_quadruples():
     global is_executing, instruction_pointer
     op_dict = {
         1: operator.add, 2: operator.sub, 3: operator.truediv, 4: operator.mul, 5: operator.lt,
@@ -369,9 +371,9 @@ def check_quadruples():
                 else:
                     update_instruction_pointer(result)
             case 23:
-                go_to_function(left_oper, result)
+                change_scope_to_function(left_oper, result)
             case 24:
-                save_mem_for_function(result)
+                save_memory_space_for_function(result)
                 update_instruction_pointer()
             case 25:
                 verify_array_access(left_oper, right_oper, result)
@@ -380,9 +382,9 @@ def check_quadruples():
                 add_parameter_for_function_call(left_oper)
                 update_instruction_pointer()
             case 27:
-                on_function_end()
+                end_function()
             case 14:
-                on_function_end_with_return(result)
+                end_function_with_return(result)
             case 16:
                 print_value(result)
                 update_instruction_pointer()
@@ -402,11 +404,28 @@ def check_quadruples():
 
 
 def start_vm():
+    global memory_size
+    default_size = 10000
+    print("Input the desired memory size for your program execution: ")
+    print("For default size (10,000), simply press 'ENTER'")
+    input_memory_size = input().strip()
+    if not input_memory_size:
+        print("Starting virtual machine with default size.")
+        memory_size = default_size
+    else:
+        try:
+            memory_size = int(input_memory_size)
+            print(f"Starting virtual machine with specified memory size: {memory_size}")
+        except ValueError:
+            print("Invalid memory size. Starting virtual machine with default size.")
+            memory_size = default_size
+    print()
+  
     start_global_memory()
-    start_main_mem()
-    print('\nStarting Program Execution\n')
-    check_quadruples()
+    start_main_memory()
+    execute_quadruples()
+    # print()
     # print('Global Memory')
     # print_global_memory()
-    # print('Last Memory')
-    # print_current_mem()
+    # print('Main_ Memory')
+    # print_current_memory()
