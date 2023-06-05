@@ -90,7 +90,7 @@ class ParserClass(Parser):
     def function_parameters(self, p):
         pass
 
-    @_('RETURN expression np_set_return_quad SEMI')
+    @_('RETURN LPAREN expression np_set_return_quad RPAREN SEMI')
     def return_stmt(self, p):
         pass
 

@@ -86,7 +86,7 @@ var option: int;
     print(`n);
     print("Ingresa la opcion:  ");
     read(option);
-    return option;
+    return (option);
 }
 
 main ()

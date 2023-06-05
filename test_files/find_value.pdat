@@ -16,10 +16,10 @@ var i: int;
 {
   for(i = 0; i == arraySize; 1) {
     if(data[i] == to_find) {
-      return i;
+      return (i);
     }
   }
-  return -1;
+  return (-1);
 }
 
 main ()

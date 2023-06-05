@@ -8,7 +8,7 @@ var hola: int[30];
     for (i = 1; i > x; 1) {
         total = total * i;
     }
-    return total;
+    return (total);
 }
 
 main()

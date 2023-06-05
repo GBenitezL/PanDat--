@@ -2,9 +2,9 @@ program fibonacci_recursive;
 
 function fibonacci: int(positon : int) {
     if(positon == 0 || positon == 1) {
-        return positon;
+        return (positon);
     } else {
-        return fibonacci(positon - 1) + fibonacci(positon - 2);
+        return (fibonacci(positon - 1) + fibonacci(positon - 2));
     }
 }
 
