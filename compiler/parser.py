@@ -497,7 +497,7 @@ class ParserClass(Parser):
     def np_close_parenthesis(self, p):
         global operators_stack
         if operators_stack[-1] != '(':
-            print_error('Error: Unbalanced parenthesis ', '')
+            print_error('Error: Unbalanced parenthesis ', 'EC-08')
         operators_stack.pop()
 
     ##### Arithmetics #####
@@ -535,7 +535,7 @@ class ParserClass(Parser):
         left_type = types_stack.pop()
         res_type = get_type(operator, right_type, left_type)
         if res_type == 'Error':
-            print_error(f'Error: Type mismatch on "{right_type}", and "{left_type}" with a "{operator}"', '')
+            print_error(f'Error: Type mismatch on "{right_type}", and "{left_type}" with a "{operator}"', 'EC-01')
         set_quad(operator, right_oper, -1, left_oper)
 
 
@@ -578,7 +578,7 @@ class ParserClass(Parser):
             gotof_jump = len(quadruples) - 1
             jumps_stack.append(gotof_jump)
         else:
-            print_error(f'Conditional statement must be of type bool', '')
+            print_error(f'Conditional statement must be of type bool', 'EC-09')
     
     # Se llena el cuádruplo del GOTOF con el valor del cuádruplo actual
     @_(' ')
@@ -613,7 +613,7 @@ class ParserClass(Parser):
             operands_stack.append(left_oper)
             types_stack.append('int')
         else:
-            print_error(f'For loop requires limits of type int', '')
+            print_error(f'For loop requires limits of type int', 'EC-10')
     
     # Se valida que la condición del for sea tipo booleana.
     # Se genera un cuádruplo GOTOV que se utiliza para cerrar el for, y se añade su posición a la pila de saltos.
@@ -627,7 +627,7 @@ class ParserClass(Parser):
             set_quad('GOTOV', result, -1, -1)
             jumps_stack.append(len(quadruples) - 1)
         else:
-            print_error(f'For loop requires condition of type bool', '')
+            print_error(f'For loop requires condition of type bool', 'EC-11')
 
     # Verifica que el valor del incremento sea de tipo entero
     # Genera un cuádruplo para sumar la variable iterable con el incremento.
@@ -641,7 +641,7 @@ class ParserClass(Parser):
             for_variable_value = operands_stack.pop()
             for_variable_type = types_stack.pop()
         else:
-            print_error('Value for For loop update variable should be int', '')
+            print_error('Value for For loop update variable should be int', 'EC-12')
         
         if get_type('+', for_variable_type, 'int') == 'int':
             set_quad('+', for_variable_value, for_step, for_variable_value)
@@ -650,7 +650,7 @@ class ParserClass(Parser):
             set_quad('GOTO', -1, -1, return_position)
             quadruples[end_position].set_result(len(quadruples))
         else:
-            print_error(f'Cannot perform operation + to {for_variable_type} and int', '')
+            print_error(f'Cannot perform operation + to {for_variable_type} and int', 'EC-01')
 
 
     # Se agrega la posición actual a la pila de saltos para poder regresar
@@ -667,7 +667,7 @@ class ParserClass(Parser):
             set_quad('GOTOF', condition_value, -1, -1)
             jumps_stack.append(len(quadruples) - 1)
         else:
-            print_error(f'Conditional statement must be of type bool', '')
+            print_error(f'Conditional statement must be of type bool', 'EC-09')
 
     # Se agrega un GOTO al inicio del while para que regrese y evalúe la condición hasta que sea falsa
     # Se actualiza el GOTO del while para indicar la posición en la cual termina
@@ -720,7 +720,7 @@ class ParserClass(Parser):
             # Fondo falso
             operators_stack.append('fb_function')
         else:
-            print_error(f'Function {current_function_call_ID} is not defined', '')
+            print_error(f'Function {current_function_call_ID} is not defined', 'EC-13')
 
     # Valida que el parámetro tenga el mismo tipo que el de la firma de la función
     # Se crea un cuádruplo PARAM con el valor del parámetro y su número (posición en la firma)
@@ -738,7 +738,7 @@ class ParserClass(Parser):
             parameters_count += 1
             parameters_stack.append(parameters_count)
         else:
-            print_error(f'The {parameters_count + 1}th argument of function {current_function_call_ID} should be of type {function_call_parameters[parameters_count]}', '')
+            print_error(f'The {parameters_count + 1}th argument of function {current_function_call_ID} should be of type {function_call_parameters[parameters_count]}', 'EC-14')
         
     # Verifica que la cantidad de parámetros de la llamada sea la misma a la cantidad de parámetros de la firma
     # Además, genera una nueva variable temporal para almacenar el valor que regresa la función (a menos de que sea tipo void)
@@ -754,7 +754,7 @@ class ParserClass(Parser):
             initial_function_address = scopes.get_quad_count(current_function_call_ID)
             set_quad('GOSUB', current_function_call_ID, -1, initial_function_address)
         else:
-            print_error(f'Function {current_function_call_ID}, requires {size_of_parameters} arguments', '')
+            print_error(f'Function {current_function_call_ID}, requires {size_of_parameters} arguments', 'EC-15')
         
         fun_return_type = scopes.get_return_type(current_function_call_ID)
         if fun_return_type != 'void':
@@ -778,7 +778,7 @@ class ParserClass(Parser):
         if (function_return_type == types_stack.pop()):
             set_quad('RETURN', -1, -1, operands_stack.pop())
         else:
-            print_error(f'Function {current_scope} must return a value of type {function_return_type}', '')
+            print_error(f'Function {current_scope} must return a value of type {function_return_type}', 'EC-16')
 
     ##### Arrays #####
 
@@ -789,7 +789,7 @@ class ParserClass(Parser):
         global is_array, array_size
         is_array = True
         array_size = p[-2]
-        create_constant_int_address(array_size) if array_size >= 1 else print_error('Array size should be greater than 1', '')
+        create_constant_int_address(array_size) if array_size >= 1 else print_error('Array size should be greater than 1', 'EC-05')
 
     # Restablece las globales is_array y array_size cuando se lee una variable no dimensionada.
     @_(' ')
@@ -814,7 +814,7 @@ class ParserClass(Parser):
             # Fondo falso
             operators_stack.append('fb_array')
         else:
-            print_error(f'Array {array_ID} is not defined.', '')
+            print_error(f'Array {array_ID} is not defined.', 'EC-19')
         
 
     # Crea un cuádruplo que suma el valor del arreglo a acceder y la dirección del arreglo
@@ -845,7 +845,7 @@ class ParserClass(Parser):
         if accessing_array_type == 'int':
             set_quad('VERIFY', value_to_access, lower_limit, upper_limit)
         else:
-            print_error(f'Array {array_ID} must be accesed using an int value', '')
+            print_error(f'Array {array_ID} must be accesed using an int value', 'EC-20')
 
     # Verifica que ambas variables sean arreglos de tipo enteo o flotante, y que la propiedad array_size sea igual para ambas
     @_(' ')
@@ -858,9 +858,9 @@ class ParserClass(Parser):
                 if x_array_var['array_size'] != y_array_var['array_size']:
                     print_error(f'Arrays{p[-4]} and {p[-2]} must be of equal length', 'EC-17')
             else:
-                print_error('The plot function requires 2 arrays of type int or float', 'EC-18')
+                print_error('This function requires 2 arrays of type int or float', 'EC-18')
         else:
-            print_error('The plot function requires 2 arrays of type int or float', 'EC-18')
+            print_error('This function requires 2 arrays of type int or float', 'EC-18')
 
 
     ##### Statistical Functions #####
@@ -994,7 +994,7 @@ def get_variable_directory(variable_ID):
     if (directory_var == None):
         directory_var = scopes.get_variables_table('program').get_one(variable_ID)
         if (directory_var == None):
-            print_error(f'Variable {variable_ID} not found in current or global scope', '')
+            print_error(f'Variable {variable_ID} not found in current or global scope', 'EC-06')
     return directory_var
 
 def create_scope(scope_id, return_type):
@@ -1023,7 +1023,7 @@ def create_quad(operators_to_check):
             operands_stack.append(new_address)
             types_stack.append(res_type)
         else:
-            print_error(f'Cannot perform operation {operator} to {left_type} and {right_type}', '')
+            print_error(f'Cannot perform operation {operator} to {left_type} and {right_type}', 'EC-01')
 
 def create_quad_statistics(array_ID, stat_operator):
     current_variable = get_variable_directory(array_ID)
@@ -1033,7 +1033,7 @@ def create_quad_statistics(array_ID, stat_operator):
         types_stack.append('float')
         set_quad(stat_operator, current_variable['array_size'], current_variable['address'], result_address)
     else:
-        print_error(f'{stat_operator} function requires an array of floats or integers.', '')
+        print_error(f'{stat_operator} function requires an array of floats or integers.', 'EC-07')
 
 
 def set_quad(oper_ID, left_oper, right_oper, result):
