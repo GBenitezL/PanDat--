@@ -1,0 +1,35 @@
+program statistics;
+var arr_x, arr_y: int[20];
+var arr_size: int;
+
+main()
+var i: int;
+{
+    arr_size = 20;
+    for (i = 0; i == arr_size; 1) {
+        arr_x[i] = i;
+        arr_y[i] = i * 2;
+    }
+
+    print(`n);
+    print("Los datos son los siguientes: ");
+    for(i = 0; i == arr_size; 1) {
+        print(arr_y[i], ", ");
+    }
+    print(`n);
+    print("La media de los datos es: ", mean(arr_y), `n);
+    print("La mediana de estos datos es: ", median(arr_y), `n);
+    print("La varianza de los datos es: ", variance(arr_y), `n);
+    print("La desviacion estandar de los datos es: ", std(arr_y), `n);
+    print("El rango intercuartil de los datos es: ", iqr(arr_y), `n);
+    print("La suma de los datos es: ", sum(arr_y), `n);
+    print("La cantidad de datos no nulos es: ", count(arr_y), `n);
+    print("Interseccion de los arreglos: ", `n);
+    intersect(arr_x, arr_y);
+    print("Correlacion de los arreglos: ", `n);
+    corr(arr_x, arr_y);
+    print("Regresion de los arreglos: ", `n);
+    regression(arr_x, arr_y);
+    histplot(arr_y);
+    scatterplot(arr_x, arr_y);
+}

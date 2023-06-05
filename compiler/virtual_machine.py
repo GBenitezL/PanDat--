@@ -318,12 +318,12 @@ def print_value(value):
 # Print Global Memory
 def print_global_memory():
     for index, (address, value) in enumerate(global_memory.items()):
-        print(f'{index} \t\t {value} \t\t {address}')
+        print(f'{index} \t\t {address} \t\t {value}')
 
 # Print Current_Memory
 def print_current_memory():
     for index, (address, value) in enumerate(current_memory.items()):
-        print(f'{index} \t\t {value} \t\t {address}')
+        print(f'{index} \t\t {address} \t\t {value}')
 
 
 ##### QUADRUPLES #####
@@ -348,7 +348,8 @@ def execute_quadruples():
         match operation:
             case 28:
                 is_executing = False
-                print('\n\nProgram Executed Successfully\n')
+                print("\n")
+                # print('Program Executed Successfully\n')
             case 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12:
                 if operation == 3 and get_pointer_value(right_oper) == 0:
                     print_error(f'Cannot perform a division by 0', 'EE-10')
