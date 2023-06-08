@@ -233,7 +233,7 @@ class ParserClass(Parser):
         pass
 
     @_('ID np_add_id',
-       'ID np_add_id LBRACKET np_check_is_array expression np_verify_value_in_array_limits np_get_array_address')
+       'ID np_add_id LBRACKET np_check_is_array expression np_verify_value_in_array_limits RBRACKET np_get_array_address')
     def read_2(self, p):
         pass
     
@@ -803,6 +803,7 @@ class ParserClass(Parser):
     @_(' ')
     def np_check_is_array(self, p):
         global operands_stack, types_stack, operators_stack
+        # Quita la direccion de np_add_id
         operands_stack.pop()   
         types_stack.pop()
         array_ID = p[-3]
@@ -822,11 +823,11 @@ class ParserClass(Parser):
     @_(' ')
     def np_get_array_address(self, p):
         global operands_stack, types_stack, constants_table
-        accessing_array_value = operands_stack.pop()
+        array_position_to_access = operands_stack.pop()
         types_stack.pop()
-        constant_initial_array_address = create_constant_int_address(operands_stack.pop())
+        initial_array_address = create_constant_int_address(operands_stack.pop())
         pointer_address = create_pointer_address()
-        set_quad('+', accessing_array_value, constant_initial_array_address, pointer_address)
+        set_quad('+', array_position_to_access, initial_array_address, pointer_address)
         # Pop al fondo falso
         operators_stack.pop()
         operands_stack.append(pointer_address)
@@ -1102,8 +1103,9 @@ def get_new_address(variable_type, is_temp = False, space = 1, other_scope = Non
     else:
         scope = current_scope
     if is_temp:
+        temporal_types_map = get_temporal_types_map(memory)
         memory.set_count('temp', variable_type, space)
-        return get_temporal_types_map(memory)[variable_type]
+        return temporal_types_map[variable_type]
     if scope == 'program':
         global_types_map = get_global_types_map(memory)
         memory.set_count('global', variable_type, space)

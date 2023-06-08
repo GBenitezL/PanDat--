@@ -1,15 +1,15 @@
 program fibonacci_cyclic;
 
 main() 
-var positon, i, result, temp: int;
+var position, i, result, temp: int;
 {
     result = 0;
     temp = 1;
 
     print("Digite la posicion que quiere encontrar en la secuencia Fibonacci: ");
-    read(positon);
-    if (positon > 0){
-        for(i = 1; i > positon; 1) {
+    read(position);
+    if (position > 0){
+        for(i = 1; i > position; 1) {
         temp = temp + result;
         result = temp - result;
     }

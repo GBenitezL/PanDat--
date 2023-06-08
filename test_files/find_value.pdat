@@ -23,7 +23,7 @@ var i: int;
 }
 
 main ()
-var to_find, positon: int;
+var to_find, position: int;
 {
   print("Digita el numero de elementos en el arreglo: ");
   read(arraySize);
@@ -38,10 +38,10 @@ var to_find, positon: int;
   print("Digita el valor a buscar: ");
   read(to_find);
 
-  positon = findValue(to_find);
-  if(positon < 0) {
+  position = findValue(to_find);
+  if(position < 0) {
     print("El valor no se encuentra en el arreglo");
   } else {
-    print("El valor fue encontrado en esta posicion: ", positon);
+    print("El valor fue encontrado en esta posicion: ", position);
   }
 }

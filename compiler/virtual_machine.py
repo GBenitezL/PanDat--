@@ -112,7 +112,7 @@ def update_instruction_pointer(new_pos=None):
     new_pos = new_pos if new_pos is not None else instruction_pointer + 1
     
     if new_pos > len(quadruples):
-        print_error(f'Cannot locate positon {new_pos}', 'EE-03')
+        print_error(f'Cannot locate position {new_pos}', 'EE-03')
 
     instruction_pointer = new_pos
 
@@ -171,7 +171,10 @@ def end_function_with_return(return_value_address):
     if data_type_values[int(str(return_value_address)[1])] != function_return_type:
         print_error(f'Function {function_ID} requires a return value of type {function_return_type}', 'EE-08')
         
-    save_pointer_value_in_memory(get_function_global_address(function_ID), get_pointer_value(return_value_address))
+    global_function_address = get_function_global_address(function_ID)
+    returned_value = get_pointer_value(return_value_address)
+    save_pointer_value_in_memory(global_function_address, returned_value)
+
     current_memory = memory_stack.pop()
     update_instruction_pointer(instruction_pointer_stack.pop())
     memory_size += scopes.get_size(function_ID)
