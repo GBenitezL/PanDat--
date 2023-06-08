@@ -476,6 +476,7 @@ class ParserClass(Parser):
         if -1 not in constants_table:
             constants_table[-1] = memory.counters['const']['int']
             memory.set_count('const', 'int')
+            print(constants_table)
         operands_stack.append(constants_table[-1])
         types_stack.append('int')
         operators_stack.append('*')
@@ -764,8 +765,8 @@ class ParserClass(Parser):
             current_scope_variables.add_variable(temp_variable_name, fun_return_type)
             new_address = get_new_address(fun_return_type, True)
             current_scope_variables.set_variable_address(temp_variable_name, new_address)
-            directory_var = scopes.get_variables_table('program').get_one(current_function_call_ID)
-            set_quad('=', directory_var['address'], -1, new_address)
+            function_global_variable = scopes.get_variables_table('program').get_one(current_function_call_ID)
+            set_quad('=', function_global_variable['address'], -1, new_address)
             operands_stack.append(new_address)
             types_stack.append(fun_return_type)
 
