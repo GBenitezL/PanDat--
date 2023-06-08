@@ -7,8 +7,7 @@ var i: int;
 {
     for(i = 0; i == arr_size; 1) {
         arr[i] = rand(1, 10)/1.0;
-        print(arr[i]);
-    print(", ");
+        print(arr[i], ", ");
     }
 }
 
@@ -18,8 +17,7 @@ var i: int;
     print(`n);
     print("Arreglo Resultante: ");
     for(i = 0; i == arr_size; 1) {
-        print(arr[i]);
-        print(", ");
+        print(arr[i], ", ");
     }
 }
 
