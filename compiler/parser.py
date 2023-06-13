@@ -476,7 +476,6 @@ class ParserClass(Parser):
         if -1 not in constants_table:
             constants_table[-1] = memory.counters['const']['int']
             memory.set_count('const', 'int')
-            print(constants_table)
         operands_stack.append(constants_table[-1])
         types_stack.append('int')
         operators_stack.append('*')
