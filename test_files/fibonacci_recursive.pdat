@@ -1,20 +1,20 @@
 program fibonacci_recursive;
 
-function fibonacci: int(positon : int) {
-    if(positon == 0 || positon == 1) {
-        return (positon);
+function fibonacci: int(position : int) {
+    if(position == 0 || position == 1) {
+        return (position);
     } else {
-        return (fibonacci(positon - 1) + fibonacci(positon - 2));
+        return (fibonacci(position - 1) + fibonacci(position - 2));
     }
 }
 
 main() 
-var positon, result: int;
+var position, result: int;
 {
     print("Digite la posicion que quiere encontrar en la secuencia Fibonacci: ");
-    read(positon);
-    if (positon > 0) {
-        result = fibonacci(positon);
+    read(position);
+    if (position > 0) {
+        result = fibonacci(position);
         print("El valor de Fibonacci en esta posicion es: ", result);
     }
     else {

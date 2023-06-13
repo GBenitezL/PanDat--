@@ -8,9 +8,10 @@ var i: int;
     arr_size = 20;
     for (i = 0; i == arr_size; 1) {
         arr_x[i] = i;
-        arr_y[i] = i * 2;
+        arr_y[i] = i + rand(0, 10);
     }
 
+    print("hola", -4, `n);
     print(`n);
     print("Los datos son los siguientes: ");
     for(i = 0; i == arr_size; 1) {
